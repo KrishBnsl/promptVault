@@ -8,7 +8,17 @@ title: Installation
 ## Prerequisites
 
 - Python 3.11+
-- [uv](https://docs.astral.sh/uv/) (recommended) or pip
+
+## Quick Install (no clone needed)
+
+```bash
+pip install git+https://github.com/KrishBnsl/promptVault.git
+```
+
+Or with uv:
+```bash
+uvx --from git+https://github.com/KrishBnsl/promptVault.git promptctl --help
+```
 
 ## From Source
 

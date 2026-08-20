@@ -16,11 +16,27 @@ PromptVault is a self-hosted tool for AI engineers and prompt engineers to:
 
 ## Quickstart
 
-### Installation
+### Install (no clone needed)
 
 ```bash
-git clone https://github.com/yourusername/promptvault.git
-cd promptvault
+pip install git+https://github.com/KrishBnsl/promptVault.git
+```
+
+Or with uv/pipx:
+```bash
+uvx --from git+https://github.com/KrishBnsl/promptVault.git promptctl --help
+```
+
+Or with Docker:
+```bash
+docker run -p 8000:8000 -e GEMINI_API_KEY=your-key ghcr.io/krishbnsl/promptvault
+```
+
+### From Source
+
+```bash
+git clone https://github.com/KrishBnsl/promptVault.git
+cd promptVault
 uv sync
 cp .env.example .env
 # Edit .env with your API keys
