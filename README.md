@@ -4,6 +4,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-github.io-blue.svg)](https://krishbnsl.github.io/promptVault/)
 
 ## What is PromptVault?
 
@@ -152,6 +153,16 @@ OLLAMA_BASE_URL=http://localhost:11434
 │  └──────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────┘
 ```
+
+## Documentation
+
+📖 **Full docs:** https://krishbnsl.github.io/promptVault/
+
+- [Getting Started](https://krishbnsl.github.io/promptVault/docs/intro)
+- [API Reference](https://krishbnsl.github.io/promptVault/docs/api-reference)
+- [CLI Reference](https://krishbnsl.github.io/promptVault/docs/cli-reference)
+- [MCP Tools](https://krishbnsl.github.io/promptVault/docs/mcp-tools)
+- [Agent Docs (llms.txt)](https://raw.githubusercontent.com/KrishBnsl/promptVault/main/llms.txt)
 
 ## License
 
