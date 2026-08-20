@@ -33,7 +33,7 @@ class Settings(BaseSettings):
         db_path = Path(self.db_path).resolve()
         return f"sqlite:///{db_path}"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()
