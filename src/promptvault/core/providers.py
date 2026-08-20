@@ -139,12 +139,54 @@ class OllamaProvider(LLMProvider):
         }
 
 
+class GeminiProvider(LLMProvider):
+    """Google Gemini API provider."""
+
+    def generate(
+        self,
+        prompt: str,
+        model: str = "gemini-2.0-flash",
+        temperature: float = 0.0,
+        max_tokens: int = 512,
+    ) -> dict:
+        from google import genai
+
+        client = genai.Client(api_key=settings.gemini_api_key)
+        start_time = time.time()
+
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config={
+                "temperature": temperature,
+                "max_output_tokens": max_tokens,
+            },
+        )
+
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        usage = response.usage_metadata
+        prompt_tokens = getattr(usage, "prompt_token_count", 0) or 0
+        completion_tokens = getattr(usage, "candidates_token_count", 0) or 0
+
+        return {
+            "content": response.text or "",
+            "token_usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": prompt_tokens + completion_tokens,
+            },
+            "latency_ms": latency_ms,
+        }
+
+
 def get_provider(provider_name: str) -> LLMProvider:
     """Get an LLM provider by name."""
     providers = {
         "openai": OpenAIProvider,
         "anthropic": AnthropicProvider,
         "ollama": OllamaProvider,
+        "gemini": GeminiProvider,
     }
     provider_class = providers.get(provider_name)
     if not provider_class:

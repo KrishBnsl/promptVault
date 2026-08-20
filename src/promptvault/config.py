@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     embedding_provider: str = os.getenv("EMBEDDING_PROVIDER", "openai")
 
     @property

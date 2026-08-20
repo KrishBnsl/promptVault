@@ -13,6 +13,8 @@ COST_TABLE = {
     "gpt-4-turbo": {"input": 0.01, "output": 0.03},
     "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015},
     "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125},
+    "gemini-2.0-flash": {"input": 0.0001, "output": 0.0004},
+    "gemini-1.5-pro": {"input": 0.00125, "output": 0.005},
 }
 
 
