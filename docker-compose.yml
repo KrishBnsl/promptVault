@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  promptvault-api:
+  pvlt-api:
     build: .
     command: serve --http --port 8000
     ports:
@@ -14,13 +14,13 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     restart: unless-stopped
 
-  promptvault-web:
+  pvlt-web:
     build: .
     command: web --port 8080
     ports:
       - "8080:8080"
     depends_on:
-      - promptvault-api
+      - pvlt-api
     environment:
       - PROMPTVAULT_DB_PATH=/app/data/promptvault.db
     volumes:

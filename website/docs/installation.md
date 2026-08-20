@@ -12,12 +12,12 @@ title: Installation
 ## Quick Install (no clone needed)
 
 ```bash
-pip install promptvault
+pip install pvlt
 ```
 
 Or with uv:
 ```bash
-uvx promptvault
+uvx pvlt
 ```
 
 ## From Source
@@ -43,14 +43,14 @@ ANTHROPIC_API_KEY=sk-ant-...
 ## Using pip
 
 ```bash
-pip install promptvault
+pip install pvlt
 ```
 
 ## Docker
 
 ```bash
-docker build -t promptvault .
-docker run -p 8000:8000 -v $(pwd)/data:/app/data promptvault
+docker build -t pvlt .
+docker run -p 8000:8000 -v $(pwd)/data:/app/data pvlt
 ```
 
 Or with docker-compose:
@@ -109,7 +109,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "promptvault": {
+    "pvlt": {
       "command": "promptctl",
       "args": ["serve"]
     }

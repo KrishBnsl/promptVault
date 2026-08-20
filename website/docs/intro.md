@@ -76,7 +76,7 @@ The main interface. Add to Claude Desktop or any MCP client:
 ```json
 {
   "mcpServers": {
-    "promptvault": {
+    "pvlt": {
       "command": "promptctl",
       "args": ["serve"]
     }

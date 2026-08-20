@@ -19,7 +19,7 @@ PromptVault is a self-hosted tool for AI engineers and prompt engineers to:
 ### Install (no clone needed)
 
 ```bash
-pip install promptvault
+pip install pvlt
 ```
 
 Or with uv/pipx:
@@ -29,7 +29,7 @@ uvx --from git+https://github.com/KrishBnsl/promptVault.git promptctl --help
 
 Or with Docker:
 ```bash
-docker run -p 8000:8000 -e GEMINI_API_KEY=your-key ghcr.io/krishbnsl/promptvault
+docker run -p 8000:8000 -e GEMINI_API_KEY=your-key ghcr.io/krishbnsl/pvlt
 ```
 
 ### From Source
@@ -73,7 +73,7 @@ Add to your Claude Desktop config:
 ```json
 {
   "mcpServers": {
-    "promptvault": {
+    "pvlt": {
       "command": "promptctl",
       "args": ["serve"]
     }

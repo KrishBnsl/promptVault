@@ -31,7 +31,7 @@ def _prompt_create_schema() -> dict:
 def create_mcp_server() -> MCPServer:
     """Create and configure the MCP server."""
     server = MCPServer(
-        name="promptvault-mcp",
+        name="pvlt-mcp",
         instructions="PromptVault MCP server for prompt versioning, evaluation, and management.",
     )
 

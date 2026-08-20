@@ -10,7 +10,7 @@ class TestMCPServer:
         """Test that server can be created."""
         server = create_mcp_server()
         assert server is not None
-        assert server.name == "promptvault-mcp"
+        assert server.name == "pvlt-mcp"
 
     def test_server_has_tools(self):
         """Test that server has all expected tools registered."""

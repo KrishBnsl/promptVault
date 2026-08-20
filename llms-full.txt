@@ -10,7 +10,7 @@ PromptVault is a self-hosted tool for AI engineers and prompt engineers to versi
 
 ## MCP Server
 
-Server name: `promptvault-mcp`. Transport: stdio. Entry point: `promptctl serve`
+Server name: `pvlt-mcp`. Transport: stdio. Entry point: `promptctl serve`
 
 ### prompt_create
 Create a new prompt with initial version.
@@ -461,8 +461,8 @@ Any endpoint that accepts `model_config` can override:
 ### Docker
 
 ```bash
-docker build -t promptvault .
-docker run -p 8000:8000 -v $(pwd)/data:/app/data promptvault
+docker build -t pvlt .
+docker run -p 8000:8000 -v $(pwd)/data:/app/data pvlt
 ```
 
 Or with docker-compose:
@@ -489,13 +489,13 @@ cp .env.example .env
 
 ### Using pip
 ```bash
-pip install promptvault
+pip install pvlt
 ```
 
 ### Docker
 ```bash
-docker build -t promptvault .
-docker run -p 8000:8000 promptvault
+docker build -t pvlt .
+docker run -p 8000:8000 pvlt
 ```
 
 ---

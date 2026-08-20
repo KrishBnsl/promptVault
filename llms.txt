@@ -107,7 +107,7 @@ All via environment variables or `.env` file:
 ```json
 {
   "mcpServers": {
-    "promptvault": {
+    "pvlt": {
       "command": "promptctl",
       "args": ["serve"]
     }

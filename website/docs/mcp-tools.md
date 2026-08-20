@@ -7,7 +7,7 @@ title: MCP Tools
 
 PromptVault exposes 13 tools and 4 resources via MCP (Model Context Protocol) over stdio.
 
-**Server name:** `promptvault-mcp`
+**Server name:** `pvlt-mcp`
 
 ## Setup
 
@@ -16,7 +16,7 @@ Add to your MCP client config (e.g., Claude Desktop):
 ```json
 {
   "mcpServers": {
-    "promptvault": {
+    "pvlt": {
       "command": "promptctl",
       "args": ["serve"]
     }

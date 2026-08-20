@@ -91,14 +91,14 @@ docker run -p 8000:8000 \
   -e GEMINI_API_KEY=your-key \
   -e PROMPTVAULT_DB_PATH=/app/data/promptvault.db \
   -v $(pwd)/data:/app/data \
-  promptvault
+  pvlt
 ```
 
 Or with docker-compose:
 
 ```yaml
 services:
-  promptvault:
+  pvlt:
     build: .
     ports:
       - "8000:8000"
