@@ -7,14 +7,34 @@ from promptvault.core.providers import get_provider
 from promptvault.db import crud
 
 # Built-in cost table (per 1K tokens) - can be overridden by model_config
+# Prices as of August 2026
 COST_TABLE = {
-    "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
+    # OpenAI
     "gpt-4o": {"input": 0.0025, "output": 0.01},
-    "gpt-4-turbo": {"input": 0.01, "output": 0.03},
-    "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015},
-    "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125},
+    "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
+    "gpt-4.1": {"input": 0.002, "output": 0.008},
+    "gpt-4.1-mini": {"input": 0.0004, "output": 0.0016},
+    "gpt-4.1-nano": {"input": 0.0001, "output": 0.0004},
+    "gpt-5": {"input": 0.00125, "output": 0.01},
+    "gpt-5-mini": {"input": 0.00025, "output": 0.002},
+    "gpt-5-nano": {"input": 0.00005, "output": 0.0004},
+    "o3": {"input": 0.002, "output": 0.008},
+    "o3-mini": {"input": 0.0011, "output": 0.0044},
+    "o4-mini": {"input": 0.0011, "output": 0.0044},
+    # Anthropic
+    "claude-haiku-4-5": {"input": 0.001, "output": 0.005},
+    "claude-sonnet-5": {"input": 0.002, "output": 0.01},
+    "claude-opus-5": {"input": 0.005, "output": 0.025},
+    "claude-opus-4-7": {"input": 0.005, "output": 0.025},
+    # Google Gemini
+    "gemini-3.7-flash": {"input": 0.00075, "output": 0.00375},
+    "gemini-3.6-flash": {"input": 0.00075, "output": 0.00375},
+    "gemini-3.5-flash": {"input": 0.0015, "output": 0.009},
+    "gemini-3.1-pro": {"input": 0.002, "output": 0.012},
+    "gemini-3-flash": {"input": 0.0005, "output": 0.003},
+    "gemini-2.5-flash": {"input": 0.00015, "output": 0.0006},
+    "gemini-2.5-flash-lite": {"input": 0.0001, "output": 0.0004},
     "gemini-2.0-flash": {"input": 0.0001, "output": 0.0004},
-    "gemini-1.5-pro": {"input": 0.00125, "output": 0.005},
 }
 
 
@@ -142,7 +162,7 @@ class EvaluationEngine:
                 try:
                     response = provider.generate(
                         prompt=filled_prompt,
-                        model=effective_config.get("model", "gpt-4o-mini"),
+                        model=effective_config.get("model", "gpt-4.1-mini"),
                         temperature=effective_config.get("temperature", 0.0),
                         max_tokens=effective_config.get("max_tokens", 512),
                     )

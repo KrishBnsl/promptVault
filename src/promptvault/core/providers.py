@@ -33,7 +33,7 @@ class OpenAIProvider(LLMProvider):
     def generate(
         self,
         prompt: str,
-        model: str = "gpt-4o-mini",
+        model: str = "gpt-4.1-mini",
         temperature: float = 0.0,
         max_tokens: int = 512,
     ) -> dict:
@@ -69,7 +69,7 @@ class AnthropicProvider(LLMProvider):
     def generate(
         self,
         prompt: str,
-        model: str = "claude-3-5-sonnet-20241022",
+        model: str = "claude-sonnet-5",
         temperature: float = 0.0,
         max_tokens: int = 512,
     ) -> dict:
@@ -145,7 +145,7 @@ class GeminiProvider(LLMProvider):
     def generate(
         self,
         prompt: str,
-        model: str = "gemini-2.0-flash",
+        model: str = "gemini-3.7-flash",
         temperature: float = 0.0,
         max_tokens: int = 512,
     ) -> dict:
