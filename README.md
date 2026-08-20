@@ -19,7 +19,7 @@ PromptVault is a self-hosted tool for AI engineers and prompt engineers to:
 ### Install (no clone needed)
 
 ```bash
-pip install git+https://github.com/KrishBnsl/promptVault.git
+pip install promptvault
 ```
 
 Or with uv/pipx:

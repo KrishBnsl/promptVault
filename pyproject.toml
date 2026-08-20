@@ -5,6 +5,17 @@ description = "Open-source prompt versioning, evaluation, and management as an M
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
+keywords = ["prompts", "llm", "mcp", "evaluation", "versioning", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "sqlalchemy>=2.0",
     "pydantic>=2.0",
@@ -19,6 +30,12 @@ dependencies = [
     "pydantic-settings>=2.0",
     "google-genai>=2.19.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/KrishBnsl/promptVault"
+Documentation = "https://krishbnsl.github.io/promptVault/"
+Repository = "https://github.com/KrishBnsl/promptVault"
+Issues = "https://github.com/KrishBnsl/promptVault/issues"
 
 [project.optional-dependencies]
 dev = [

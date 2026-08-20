@@ -12,12 +12,12 @@ title: Installation
 ## Quick Install (no clone needed)
 
 ```bash
-pip install git+https://github.com/KrishBnsl/promptVault.git
+pip install promptvault
 ```
 
 Or with uv:
 ```bash
-uvx --from git+https://github.com/KrishBnsl/promptVault.git promptctl --help
+uvx promptvault
 ```
 
 ## From Source
