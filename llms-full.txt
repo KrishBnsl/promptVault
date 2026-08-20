@@ -1,0 +1,505 @@
+# PromptVault - Full Reference
+
+> Open-source prompt versioning, evaluation, and management as an MCP server.
+> GitHub: https://github.com/KrishBnsl/promptVault
+> Docs: https://krishbnsl.github.io/promptVault/
+
+PromptVault is a self-hosted tool for AI engineers and prompt engineers to version prompts like code (immutable versions, rollback), evaluate prompts against datasets using LLMs, and access everything through an MCP server (primary), CLI, or REST API. Built with Python 3.11+, SQLAlchemy 2.x + SQLite, FastAPI, Typer, MCP SDK. MIT license.
+
+---
+
+## MCP Server
+
+Server name: `promptvault-mcp`. Transport: stdio. Entry point: `promptctl serve`
+
+### prompt_create
+Create a new prompt with initial version.
+- `name` (string, required): Unique prompt name
+- `content` (string, required): Prompt template with {variable} placeholders
+- `description` (string, optional, default ""): Human description
+- `variables` (object, optional): Dict mapping variable names to type descriptions, e.g. {"name": "string", "tone": "formal|casual"}
+- `model_config` (object, optional): LLM config override, e.g. {"provider": "openai", "model": "gpt-4o-mini", "temperature": 0.2}
+- `commit_message` (string, optional, default ""): Version commit message
+- `tags` (array of strings, optional): Classification tags
+- Returns: JSON with prompt_id, name, version, version_id
+
+### prompt_get
+Retrieve a specific version of a prompt.
+- `name` (string, required): Prompt name
+- `version` (integer, optional): Version number. If omitted, returns latest version.
+- Returns: JSON with prompt_id, name, version, content, variables, model_config, commit_message, created_at
+
+### prompt_list
+List all prompts.
+- `tags` (array of strings, optional): Filter by tags (AND logic)
+- `limit` (integer, optional, default 50): Max results
+- `offset` (integer, optional, default 0): Pagination offset
+- Returns: JSON array of {id, name, description, tags, created_at}
+
+### prompt_versions
+List all versions of a prompt.
+- `name` (string, required): Prompt name
+- Returns: JSON array of {version, commit_message, created_at}
+
+### prompt_diff
+Show diff between two prompt versions.
+- `name` (string, required): Prompt name
+- `version_a` (integer, required): First version number
+- `version_b` (integer, required): Second version number
+- Returns: JSON with diff string (unified diff format)
+
+### prompt_rollback
+Rollback to a previous prompt version. Creates a new version with the old content.
+- `name` (string, required): Prompt name
+- `version` (integer, required): Target version to rollback to
+- `commit_message` (string, optional, default ""): Commit message for the new version
+- Returns: JSON with prompt_id, name, version (new version number), rolled_back_to, commit_message
+
+### dataset_create
+Create a new dataset from items.
+- `name` (string, required): Unique dataset name
+- `items` (array of objects, required): Each item has {"input": {...}, "expected_output": "string"}
+- `description` (string, optional, default ""): Human description
+- Returns: JSON with dataset_id, name, items_count
+
+### dataset_list
+List datasets.
+- `limit` (integer, optional, default 50): Max results
+- `offset` (integer, optional, default 0): Pagination offset
+- Returns: JSON array of {id, name, description, items_count, created_at}
+
+### dataset_get
+Get a dataset with all its items.
+- `name` (string, required): Dataset name
+- Returns: JSON with id, name, description, items (array of {id, input, expected_output})
+
+### evaluation_run
+Run evaluation of a prompt version against a dataset. Calls the LLM for each dataset item, scores results, computes cost.
+- `prompt_name` (string, required): Prompt name
+- `dataset_name` (string, required): Dataset name
+- `version` (integer, optional): Specific prompt version. If omitted, uses latest.
+- Returns: JSON with evaluation_id, status
+
+### evaluation_status
+Check status of an evaluation run.
+- `evaluation_id` (string, required): Evaluation ID
+- Returns: JSON with evaluation_id, status, metrics
+
+### evaluation_report
+Get full evaluation report with all results and aggregated metrics.
+- `evaluation_id` (string, required): Evaluation ID
+- Returns: JSON with evaluation_id, status, model_config, metrics, created_at, completed_at, results (array of {id, input, expected_output, actual_output, latency_ms, token_usage, cost, scores, error})
+
+### evaluation_compare
+Compare two evaluation runs side by side.
+- `evaluation_id_a` (string, required): First evaluation ID
+- `evaluation_id_b` (string, required): Second evaluation ID
+- Returns: JSON with evaluation_a, evaluation_b, metrics_comparison
+
+### MCP Resources
+
+| URI Pattern | Description |
+|-------------|-------------|
+| `prompt://{name}/latest` | Latest version of a prompt |
+| `prompt://{name}/version/{version}` | Specific version |
+| `dataset://{dataset_name}` | Dataset with items |
+| `evaluation://{evaluation_id}/report` | Evaluation report |
+
+---
+
+## REST API
+
+Base URL: `http://localhost:8000/api`. Swagger docs at `http://localhost:8000/docs`.
+
+### POST /api/prompts
+Create a new prompt with initial version.
+
+Request body:
+```json
+{
+  "name": "string (required)",
+  "content": "string (required)",
+  "description": "string (optional)",
+  "variables": {"key": "type_description"},
+  "model_config": {"provider": "openai", "model": "gpt-4o-mini"},
+  "commit_message": "string (optional)",
+  "tags": ["string"]
+}
+```
+
+Response (200):
+```json
+{
+  "id": "uuid",
+  "name": "string",
+  "description": "string",
+  "tags": ["string"],
+  "current_version_id": "uuid",
+  "created_at": "ISO datetime",
+  "updated_at": "ISO datetime"
+}
+```
+
+### GET /api/prompts
+List all prompts.
+- Query params: `tags` (comma-separated), `limit` (int, default 50), `offset` (int, default 0)
+- Response: Array of {id, name, description, tags, created_at}
+
+### GET /api/prompts/{name}
+Get prompt with latest version content.
+- Response: {id, name, description, tags, current_version: {version, content, variables, model_config}, created_at}
+
+### GET /api/prompts/{name}/versions
+List all versions of a prompt.
+- Response: Array of {id, version, content, commit_message, created_at}
+
+### GET /api/prompts/{name}/versions/{version}
+Get specific version.
+- Response: {id, prompt_id, version, content, variables, model_config, commit_message, created_at}
+
+### POST /api/prompts/{name}/rollback
+Rollback to a previous version.
+- Request body: {"version": int (required), "commit_message": "string (optional)"}
+- Response: {id, prompt_id, version, commit_message, created_at}
+
+### POST /api/datasets
+Create a new dataset.
+- Request body: {"name": "string (required)", "description": "string", "items": [{"input": {}, "expected_output": "string"}]}
+- Response: {id, name, description, items_count, created_at}
+
+### GET /api/datasets
+List datasets.
+- Query params: `limit`, `offset`
+- Response: Array of {id, name, description, items_count, created_at}
+
+### GET /api/datasets/{name}
+Get dataset with items.
+- Response: {id, name, description, items: [{id, input, expected_output}], created_at}
+
+### POST /api/evaluations
+Run evaluation.
+- Request body: {"prompt_name": "string", "dataset_name": "string", "version": int, "model_config": {"provider": "gemini", "model": "gemini-3.7-flash"}}
+- Response: {id, status, model_config, created_at}
+
+### GET /api/evaluations/{evaluation_id}
+Get evaluation status.
+- Response: {id, status, model_config, metrics, created_at, completed_at}
+
+### GET /api/evaluations/{evaluation_id}/report
+Get full report with results.
+- Response: {evaluation_id, status, model_config, metrics, created_at, completed_at, results: [{id, input, expected_output, actual_output, latency_ms, token_usage, cost, scores, error}]}
+
+---
+
+## CLI Reference
+
+CLI name: `promptctl`. Global options: `--db-path`, `--verbose/-v`.
+
+### Prompt Commands
+
+```bash
+# Create a prompt
+promptctl prompt create <name> \
+  --content "Hello {name}" \
+  --description "A greeting" \
+  --variables '{"name": "string"}' \
+  --model-config '{"provider": "openai", "model": "gpt-4o-mini"}' \
+  --commit-message "Initial version" \
+  --tags "greeting,test"
+
+# List prompts
+promptctl prompt list [--tags "tag1,tag2"] [--limit 50] [--offset 0] [--json]
+
+# Show prompt details
+promptctl prompt show <name> [--version N] [--json]
+
+# List all versions
+promptctl prompt versions <name> [--json]
+
+# Diff two versions
+promptctl prompt diff <name> <version-a> <version-b>
+
+# Rollback to a previous version
+promptctl prompt rollback <name> --version N [--commit-message "Rolling back"]
+```
+
+Note: `--content` supports `@file` syntax to read from a file, e.g. `--content @prompts/summarize.txt`
+
+### Dataset Commands
+
+```bash
+# Create dataset from JSONL or JSON file
+promptctl dataset create <name> --file data.jsonl [--description "Test data"]
+
+# List datasets
+promptctl dataset list [--limit 50] [--offset 0] [--json]
+```
+
+JSONL format (one JSON object per line):
+```json
+{"input": {"question": "What is 2+2?"}, "expected_output": "4"}
+{"input": {"question": "Capital of France?"}, "expected_output": "Paris"}
+```
+
+JSON format:
+```json
+[
+  {"input": {"question": "What is 2+2?"}, "expected_output": "4"},
+  {"input": {"question": "Capital of France?"}, "expected_output": "Paris"}
+]
+```
+
+### Evaluation Commands
+
+```bash
+# Run evaluation
+promptctl eval run <prompt-name> --dataset <dataset-name> \
+  [--version N] \
+  [--model-config '{"provider": "gemini", "model": "gemini-3.7-flash"}']
+
+# Get report
+promptctl eval report <evaluation-id> [--format json|table]
+```
+
+### Server Commands
+
+```bash
+# Start MCP server (stdio, default)
+promptctl serve
+
+# Start REST API (HTTP)
+promptctl serve --http --port 8000
+```
+
+---
+
+## LLM Providers
+
+### OpenAI
+- Provider name: `openai`
+- Default model: `gpt-4.1-mini`
+- Auth: `OPENAI_API_KEY` env var
+- SDK: `openai` Python package
+- API: `client.chat.completions.create()`
+
+### Anthropic
+- Provider name: `anthropic`
+- Default model: `claude-sonnet-5`
+- Auth: `ANTHROPIC_API_KEY` env var
+- SDK: `anthropic` Python package
+- API: `client.messages.create()`
+
+### Ollama (Local)
+- Provider name: `ollama`
+- Default model: `llama3.2`
+- Auth: None required
+- Transport: HTTP via `httpx` to `{OLLAMA_BASE_URL}/api/chat`
+
+### Google Gemini
+- Provider name: `gemini`
+- Default model: `gemini-3.7-flash`
+- Auth: `GEMINI_API_KEY` env var
+- SDK: `google-genai` Python package
+- API: `client.models.generate_content()`
+
+### Provider Interface
+
+All providers implement `LLMProvider.generate()`:
+- Input: `prompt` (str), `model` (str), `temperature` (float, default 0.0), `max_tokens` (int, default 512)
+- Output: `{"content": str, "token_usage": {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int}, "latency_ms": int}`
+
+---
+
+## Cost Table (per 1K tokens, as of August 2026)
+
+### OpenAI
+
+| Model | Input | Output |
+|-------|-------|--------|
+| gpt-4o | $0.0025 | $0.01 |
+| gpt-4o-mini | $0.00015 | $0.0006 |
+| gpt-4.1 | $0.002 | $0.008 |
+| gpt-4.1-mini | $0.0004 | $0.0016 |
+| gpt-4.1-nano | $0.0001 | $0.0004 |
+| gpt-5 | $0.00125 | $0.01 |
+| gpt-5-mini | $0.00025 | $0.002 |
+| gpt-5-nano | $0.00005 | $0.0004 |
+| o3 | $0.002 | $0.008 |
+| o3-mini | $0.0011 | $0.0044 |
+| o4-mini | $0.0011 | $0.0044 |
+
+### Anthropic
+
+| Model | Input | Output |
+|-------|-------|--------|
+| claude-haiku-4-5 | $0.001 | $0.005 |
+| claude-sonnet-5 | $0.002 | $0.01 |
+| claude-opus-5 | $0.005 | $0.025 |
+| claude-opus-4-7 | $0.005 | $0.025 |
+
+### Google Gemini
+
+| Model | Input | Output |
+|-------|-------|--------|
+| gemini-3.7-flash | $0.00075 | $0.00375 |
+| gemini-3.6-flash | $0.00075 | $0.00375 |
+| gemini-3.5-flash | $0.0015 | $0.009 |
+| gemini-3.1-pro | $0.002 | $0.012 |
+| gemini-3-flash | $0.0005 | $0.003 |
+| gemini-2.5-flash | $0.00015 | $0.0006 |
+| gemini-2.5-flash-lite | $0.0001 | $0.0004 |
+| gemini-2.0-flash | $0.0001 | $0.0004 |
+
+---
+
+## Evaluation Metrics
+
+When you run an evaluation, PromptVault computes:
+
+- **exact_match_rate**: Fraction of outputs that match expected output (case-insensitive, stripped)
+- **avg_latency_ms**: Average response time in milliseconds
+- **avg_cost**: Average cost per item in USD
+- **total_tokens**: Aggregate {prompt_tokens, completion_tokens, total_tokens}
+- **total_items**: Total dataset items evaluated
+- **successful_items**: Items that completed without error
+- **failed_items**: Items that errored
+
+Each result includes: input, expected_output, actual_output, latency_ms, token_usage, cost, scores, error.
+
+Cost is calculated automatically from the built-in cost table based on model name, or can be overridden via `model_config.cost_per_1k_tokens`.
+
+---
+
+## Data Model
+
+### Prompt
+- `id` (UUID string, primary key)
+- `name` (string, unique, indexed)
+- `description` (text)
+- `tags` (JSON array of strings)
+- `current_version_id` (FK to prompt_versions)
+- `created_at`, `updated_at` (datetime)
+
+### PromptVersion (immutable)
+- `id` (UUID string, primary key)
+- `prompt_id` (FK to prompts, indexed)
+- `version_number` (integer, starts at 1)
+- `content` (text) - the prompt template
+- `variables` (JSON dict) - variable definitions
+- `model_config` (JSON dict) - LLM configuration
+- `commit_message` (text)
+- `parent_version_id` (FK to prompt_versions, nullable)
+- `created_at` (datetime)
+- `created_by` (string, default "local")
+
+### Dataset
+- `id` (UUID string, primary key)
+- `name` (string, unique, indexed)
+- `description` (text)
+- `items` (relationship to DatasetItem, cascade delete)
+- `created_at` (datetime)
+
+### DatasetItem
+- `id` (UUID string, primary key)
+- `dataset_id` (FK to datasets, indexed)
+- `input` (JSON dict) - the input variables
+- `expected_output` (text, nullable)
+- `metadata` (JSON dict)
+
+### Evaluation
+- `id` (UUID string, primary key)
+- `prompt_version_id` (FK to prompt_versions)
+- `dataset_id` (FK to datasets)
+- `model_config` (JSON dict)
+- `status` (string: "pending", "running", "completed", "failed")
+- `metrics` (JSON dict) - aggregated results
+- `created_at`, `completed_at` (datetime)
+
+### EvaluationResult
+- `id` (UUID string, primary key)
+- `evaluation_id` (FK to evaluations, indexed)
+- `dataset_item_id` (FK to dataset_items)
+- `input` (JSON dict)
+- `expected_output` (text, nullable)
+- `actual_output` (text, nullable)
+- `latency_ms` (integer, nullable)
+- `token_usage` (JSON dict)
+- `cost` (float, nullable)
+- `scores` (JSON dict)
+- `error` (text, nullable)
+- `created_at` (datetime)
+
+---
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PROMPTVAULT_DB_PATH` | `./promptvault.db` | SQLite database file path |
+| `PROMPTVAULT_DEFAULT_PROVIDER` | `openai` | Default LLM provider name |
+| `OPENAI_API_KEY` | (empty) | OpenAI API key for gpt-* models |
+| `ANTHROPIC_API_KEY` | (empty) | Anthropic API key for claude-* models |
+| `GEMINI_API_KEY` | (empty) | Google Gemini API key for gemini-* models |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL for local models |
+| `EMBEDDING_PROVIDER` | `openai` | Embedding provider (reserved) |
+
+### Model Config Override
+
+Any endpoint that accepts `model_config` can override:
+```json
+{
+  "provider": "gemini",
+  "model": "gemini-3.7-flash",
+  "temperature": 0.2,
+  "max_tokens": 1024,
+  "cost_per_1k_tokens": {"input": 0.001, "output": 0.002}
+}
+```
+
+### Docker
+
+```bash
+docker build -t promptvault .
+docker run -p 8000:8000 -v $(pwd)/data:/app/data promptvault
+```
+
+Or with docker-compose:
+```bash
+docker-compose up
+```
+
+---
+
+## Installation
+
+### Prerequisites
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) package manager (recommended) or pip
+
+### From Source
+```bash
+git clone https://github.com/KrishBnsl/promptVault.git
+cd promptVault
+uv sync
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+### Using pip
+```bash
+pip install promptvault
+```
+
+### Docker
+```bash
+docker build -t promptvault .
+docker run -p 8000:8000 promptvault
+```
+
+---
+
+## License
+
+MIT License. See https://github.com/KrishBnsl/promptVault/blob/main/LICENSE

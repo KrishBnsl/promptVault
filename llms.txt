@@ -1,0 +1,122 @@
+# PromptVault
+
+> Open-source prompt versioning, evaluation, and management as an MCP server.
+
+PromptVault is a self-hosted tool for AI engineers to version prompts like code, evaluate them against datasets using LLMs, and access everything via MCP, CLI, or REST API. Python 3.11+, SQLite, MIT license.
+
+## Quick Start
+
+```bash
+git clone https://github.com/KrishBnsl/promptVault.git
+cd promptVault
+uv sync
+cp .env.example .env  # add your API keys
+promptctl serve        # starts MCP server over stdio
+```
+
+## Interfaces
+
+- **MCP Server** (primary): 13 tools, 4 resources, stdio transport
+- **CLI** (`promptctl`): 12 commands for prompts, datasets, evaluations
+- **REST API**: 12 endpoints at `http://localhost:8000/api`
+
+## MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `prompt_create` | Create prompt with initial version. Params: name (required), content (required), description, variables (dict), model_config (dict), commit_message, tags (list) |
+| `prompt_get` | Get prompt version. Params: name (required), version (optional, defaults to latest) |
+| `prompt_list` | List prompts. Params: tags (list), limit (int, default 50), offset (int) |
+| `prompt_versions` | List all versions. Params: name (required) |
+| `prompt_diff` | Diff two versions. Params: name, version_a, version_b (all required) |
+| `prompt_rollback` | Rollback to version. Params: name, version (required), commit_message |
+| `dataset_create` | Create dataset. Params: name (required), items (list of dicts, required), description |
+| `dataset_list` | List datasets. Params: limit, offset |
+| `dataset_get` | Get dataset with items. Params: name (required) |
+| `evaluation_run` | Run evaluation. Params: prompt_name, dataset_name (required), version (optional) |
+| `evaluation_status` | Check status. Params: evaluation_id (required) |
+| `evaluation_report` | Full report. Params: evaluation_id (required) |
+| `evaluation_compare` | Compare two evals. Params: evaluation_id_a, evaluation_id_b (required) |
+
+## REST API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/prompts` | Create prompt |
+| GET | `/api/prompts` | List prompts (?tags, ?limit, ?offset) |
+| GET | `/api/prompts/{name}` | Get prompt with latest version |
+| GET | `/api/prompts/{name}/versions` | List versions |
+| GET | `/api/prompts/{name}/versions/{version}` | Get specific version |
+| POST | `/api/prompts/{name}/rollback` | Rollback to version |
+| POST | `/api/datasets` | Create dataset |
+| GET | `/api/datasets` | List datasets |
+| GET | `/api/datasets/{name}` | Get dataset with items |
+| POST | `/api/evaluations` | Run evaluation |
+| GET | `/api/evaluations/{id}` | Get evaluation status |
+| GET | `/api/evaluations/{id}/report` | Get full report |
+
+## CLI Commands
+
+```bash
+promptctl prompt create <name> --content <text> [--description] [--variables JSON] [--model-config JSON] [--commit-message] [--tags]
+promptctl prompt list [--tags] [--limit] [--offset] [--json]
+promptctl prompt show <name> [--version N] [--json]
+promptctl prompt versions <name> [--json]
+promptctl prompt diff <name> <version-a> <version-b>
+promptctl prompt rollback <name> --version N [--commit-message]
+promptctl dataset create <name> --file <jsonl-or-json> [--description]
+promptctl dataset list [--limit] [--offset] [--json]
+promptctl eval run <prompt-name> --dataset <name> [--version N] [--model-config JSON]
+promptctl eval report <evaluation-id> [--format json|table]
+promptctl serve [--stdio|--http] [--port 8000]
+```
+
+## LLM Providers
+
+| Provider | Default Model | Auth Env Var |
+|----------|--------------|--------------|
+| `openai` | `gpt-4.1-mini` | `OPENAI_API_KEY` |
+| `anthropic` | `claude-sonnet-5` | `ANTHROPIC_API_KEY` |
+| `ollama` | `llama3.2` | None (local) |
+| `gemini` | `gemini-3.7-flash` | `GEMINI_API_KEY` |
+
+## Configuration
+
+All via environment variables or `.env` file:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PROMPTVAULT_DB_PATH` | `./promptvault.db` | SQLite database path |
+| `PROMPTVAULT_DEFAULT_PROVIDER` | `openai` | Default LLM provider |
+| `OPENAI_API_KEY` | (empty) | OpenAI API key |
+| `ANTHROPIC_API_KEY` | (empty) | Anthropic API key |
+| `GEMINI_API_KEY` | (empty) | Google Gemini API key |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
+
+## Data Model
+
+- **Prompt**: name, description, tags, current_version_id
+- **PromptVersion**: prompt_id, version_number (immutable), content, variables, model_config, commit_message, parent_version_id
+- **Dataset**: name, description, items[]
+- **DatasetItem**: dataset_id, input (dict), expected_output (str)
+- **Evaluation**: prompt_version_id, dataset_id, model_config, status, metrics
+- **EvaluationResult**: evaluation_id, dataset_item_id, input, expected_output, actual_output, latency_ms, token_usage, cost, scores
+
+## MCP Server Config (Claude Desktop)
+
+```json
+{
+  "mcpServers": {
+    "promptvault": {
+      "command": "promptctl",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+## Documentation
+
+- Full docs: https://krishbnsl.github.io/promptVault/
+- API docs (Swagger): http://localhost:8000/docs (when server running)
+- GitHub: https://github.com/KrishBnsl/promptVault
