@@ -2,8 +2,8 @@
 
 from sqlalchemy.orm import Session
 
-from promptvault.db import crud
-from promptvault.db.models import Prompt, PromptVersion
+from db import crud
+from db.models import Prompt, PromptVersion
 
 
 class VersioningEngine:

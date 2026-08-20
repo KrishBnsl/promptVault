@@ -4,8 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from promptvault.api.routes import router
-from promptvault.db.engine import init_db
+from api.routes import router
+from db.engine import init_db
 
 
 @asynccontextmanager

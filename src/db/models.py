@@ -14,7 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from promptvault.db.engine import Base
+from db.engine import Base
 
 
 def generate_uuid() -> str:

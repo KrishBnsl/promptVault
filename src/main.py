@@ -1,3 +1,5 @@
 """PromptVault - Open-source prompt versioning, evaluation, and management."""
 
-__version__ = "0.1.0"
+from cli.commands import app
+
+__all__ = ["app"]

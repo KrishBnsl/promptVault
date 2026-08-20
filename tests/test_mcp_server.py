@@ -1,6 +1,6 @@
 """Tests for the MCP server."""
 
-from promptvault.mcp_server.server import create_mcp_server
+from mcp_server.server import create_mcp_server
 
 
 class TestMCPServer:

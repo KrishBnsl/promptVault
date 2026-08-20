@@ -6,8 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from promptvault.api.main import create_app
-from promptvault.db.engine import Base, get_db
+from api.main import create_app
+from db.engine import Base, get_db
 
 
 @pytest.fixture

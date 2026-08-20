@@ -4,8 +4,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from promptvault.core.versioning import VersioningEngine
-from promptvault.db.engine import Base
+from core.versioning import VersioningEngine
+from db.engine import Base
 
 
 @pytest.fixture
@@ -79,7 +79,7 @@ class TestVersioningEngine:
         engine = VersioningEngine(db_session)
         engine.create_prompt(name="test-prompt", content="Hello v1")
 
-        from promptvault.db import crud
+        from db import crud
 
         prompt = crud.get_prompt(db_session, "test-prompt")
         crud.create_prompt_version(db_session, prompt.id, "Hello v2")
@@ -94,7 +94,7 @@ class TestVersioningEngine:
         engine = VersioningEngine(db_session)
         engine.create_prompt(name="test-prompt", content="Hello v1")
 
-        from promptvault.db import crud
+        from db import crud
 
         prompt = crud.get_prompt(db_session, "test-prompt")
         crud.create_prompt_version(db_session, prompt.id, "Hello v2")
@@ -128,7 +128,7 @@ class TestVersioningEngine:
         engine = VersioningEngine(db_session)
         engine.create_prompt(name="test-prompt", content="Hello v1")
 
-        from promptvault.db import crud
+        from db import crud
 
         prompt = crud.get_prompt(db_session, "test-prompt")
         crud.create_prompt_version(db_session, prompt.id, "Hello v2")

@@ -1,7 +1,7 @@
 """Tests for the evaluation engine."""
 
 
-from promptvault.core.evaluation import (
+from core.evaluation import (
     aggregate_metrics,
     compute_cost,
     compute_exact_match,

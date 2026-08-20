@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import Session
 
-from promptvault.db.models import (
+from db.models import (
     Dataset,
     DatasetItem,
     Evaluation,

@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 
 import httpx
 
-from promptvault.config import settings
+from config import settings
 
 
 class LLMProvider(ABC):

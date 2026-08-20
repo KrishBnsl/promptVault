@@ -3,16 +3,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from promptvault.api.schemas import (
+from api.schemas import (
     DatasetCreate,
     EvaluationRunRequest,
     PromptCreate,
     RollbackRequest,
 )
-from promptvault.core.evaluation import EvaluationEngine
-from promptvault.core.versioning import VersioningEngine
-from promptvault.db import crud
-from promptvault.db.engine import get_db
+from core.evaluation import EvaluationEngine
+from core.versioning import VersioningEngine
+from db import crud
+from db.engine import get_db
 
 router = APIRouter()
 

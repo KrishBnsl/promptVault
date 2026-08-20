@@ -5,11 +5,11 @@ import json
 from mcp.server.mcpserver import MCPServer
 from mcp.server.stdio import stdio_server
 
-from promptvault.core.diffing import compute_diff
-from promptvault.core.evaluation import EvaluationEngine
-from promptvault.core.versioning import VersioningEngine
-from promptvault.db import crud
-from promptvault.db.engine import SessionLocal, init_db
+from core.diffing import compute_diff
+from core.evaluation import EvaluationEngine
+from core.versioning import VersioningEngine
+from db import crud
+from db.engine import SessionLocal, init_db
 
 
 def _prompt_create_schema() -> dict:

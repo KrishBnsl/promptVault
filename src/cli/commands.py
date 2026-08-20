@@ -6,12 +6,12 @@ from pathlib import Path
 import typer
 from sqlalchemy.orm import Session
 
-from promptvault.config import settings
-from promptvault.core.diffing import compute_diff
-from promptvault.core.evaluation import EvaluationEngine
-from promptvault.core.versioning import VersioningEngine
-from promptvault.db import crud
-from promptvault.db.engine import SessionLocal, init_db
+from config import settings
+from core.diffing import compute_diff
+from core.evaluation import EvaluationEngine
+from core.versioning import VersioningEngine
+from db import crud
+from db.engine import SessionLocal, init_db
 
 app = typer.Typer(name="promptctl", help="PromptVault CLI - Prompt versioning and evaluation")
 prompt_app = typer.Typer(help="Prompt management commands")
@@ -423,12 +423,12 @@ def serve(
     if http:
         import uvicorn
 
-        from promptvault.api.main import create_app
+        from api.main import create_app
 
         api_app = create_app()
         uvicorn.run(api_app, host="127.0.0.1", port=port)
     else:
-        from promptvault.mcp_server.server import run_server
+        from mcp_server.server import run_server
 
         run_server()
 

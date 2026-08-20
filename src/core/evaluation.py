@@ -2,9 +2,9 @@
 
 from sqlalchemy.orm import Session
 
-from promptvault.config import DEFAULT_MODEL_CONFIG
-from promptvault.core.providers import get_provider
-from promptvault.db import crud
+from config import DEFAULT_MODEL_CONFIG
+from core.providers import get_provider
+from db import crud
 
 # Built-in cost table (per 1K tokens) - can be overridden by model_config
 # Prices as of August 2026
