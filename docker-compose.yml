@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  promptvault-api:
+    build: .
+    command: serve --http --port 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PROMPTVAULT_DB_PATH=/app/data/promptvault.db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    restart: unless-stopped
+
+  promptvault-web:
+    build: .
+    command: web --port 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - promptvault-api
+    environment:
+      - PROMPTVAULT_DB_PATH=/app/data/promptvault.db
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

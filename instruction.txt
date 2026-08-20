@@ -1,0 +1,669 @@
+# Master Instruction Document: PromptVault MCP Server & Prompt Management System
+
+## 1. Project Overview
+
+**Project Name:** PromptVault  
+**Tagline:** Open-source prompt versioning, evaluation, and management as an MCP server.  
+**Primary Interface:** MCP (Model Context Protocol) server, with CLI and REST API for non-MCP workflows.  
+**Target Audience:** AI engineers, prompt engineers, developers building LLM applications.  
+**Primary Distribution Channels:** X (Twitter) and LinkedIn.
+
+### 1.1 Problem Statement
+Prompt engineering currently relies on copy-paste, scattered notes, and ad-hoc testing. There is no systematic way to:
+- Version prompts like code
+- Evaluate prompt changes against datasets
+- Roll back to previous versions
+- Integrate prompt management directly into AI assistants and development workflows
+
+### 1.2 Solution
+PromptVault is a self-hosted, open-source tool that:
+- Stores and versions prompts in a local database
+- Evaluates prompt versions against datasets using LLM providers
+- Exposes all functionality through an MCP server, a CLI, and a REST API
+- Provides a simple web UI for visualization
+
+---
+
+## 2. Objectives & Non-Goals
+
+### 2.1 Objectives (MVP)
+- Create immutable prompt versions with metadata, variables, and model configuration.
+- List, retrieve, diff, and rollback prompt versions.
+- Create and manage evaluation datasets.
+- Run evaluations of prompt versions against datasets.
+- Record evaluation metrics: latency, token usage, cost, and scoring.
+- Expose all core operations via MCP tools and resources.
+- Provide a CLI for local and CI/CD usage.
+- Provide a REST API for external integrations.
+- Include a basic web UI for viewing prompts and evaluation reports.
+
+### 2.2 Non-Goals (Out of Scope for MVP)
+- Multi-user authentication and team workspaces.
+- Cloud-hosted version.
+- Advanced RBAC or enterprise SSO.
+- Prompt deployment orchestration to production systems.
+- Complex workflow automation (e.g., scheduled evaluations, alerts).
+- Support for every LLM provider (start with OpenAI, Anthropic, and Ollama-compatible local endpoints).
+
+---
+
+## 3. Core User Stories
+
+1. As a developer, I want to create a new prompt and save it with a version number so I can track changes.
+2. As a developer, I want to list all prompt versions and see a diff between any two versions.
+3. As a developer, I want to roll back to a previous prompt version.
+4. As a developer, I want to register a dataset of input/output examples for evaluation.
+5. As a developer, I want to run an evaluation of a specific prompt version against a dataset and get a report.
+6. As an AI assistant user, I want to ask my MCP-enabled assistant to create, retrieve, compare, and evaluate prompts without leaving the conversation.
+7. As a developer, I want to access the same functionality from a CLI and REST API.
+
+---
+
+## 4. High-Level Architecture
+
+```
+┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+│   MCP Client │   │     CLI     │   │  REST Client │
+│ (Claude etc) │   │ (promptctl) │   │ (curl, apps) │
+└──────┬──────┘   └──────┬──────┘   └──────┬──────┘
+       │                 │                 │
+       ▼                 ▼                 ▼
+┌─────────────────────────────────────────────────┐
+│              PromptVault Core                   │
+│  ┌─────────────┐ ┌──────────────┐ ┌──────────┐ │
+│  │ Versioning  │ │ Evaluation   │ │ Storage  │ │
+│  │ Engine      │ │ Engine       │ │ Layer    │ │
+│  └─────────────┘ └──────────────┘ └──────────┘ │
+│  ┌──────────────────────────────────────────┐  │
+│  │        SQLite Database (local)           │  │
+│  └──────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────┘
+       │                 │
+       ▼                 ▼
+┌─────────────┐   ┌─────────────┐
+│  LLM APIs   │   │  Web UI     │
+│ (OpenAI etc)│   │ (optional)  │
+└─────────────┘   └─────────────┘
+```
+
+**Key Design Principles**
+- **Local-first:** All data stored locally in SQLite; no external database required.
+- **MCP-first:** MCP server is the primary interface; CLI and REST wrap the same core functions.
+- **Immutable versions:** Once created, a prompt version is never modified; updates create a new version.
+- **Extensible providers:** LLM provider adapters abstract API calls; adding a new provider should not change core logic.
+- **Async-safe:** Evaluation runs can be synchronous for small datasets; architecture allows future async queue.
+
+---
+
+## 5. Technology Stack
+
+- **Language:** Python 3.11+
+- **Package Manager:** Poetry or uv (choose one; Poetry is recommended)
+- **MCP SDK:** `mcp` (official Python SDK)
+- **CLI Framework:** Typer
+- **REST API Framework:** FastAPI + Uvicorn
+- **Database:** SQLite via SQLAlchemy 2.x
+- **Data Validation:** Pydantic v2
+- **LLM Providers:** `openai` and `anthropic` official SDKs; `httpx` for generic/Ollama
+- **Testing:** pytest, pytest-asyncio
+- **Code Quality:** Ruff, mypy (basic)
+- **Containerization:** Docker (optional but recommended)
+
+---
+
+## 6. Repository Structure
+
+```
+promptvault/
+├── README.md
+├── pyproject.toml
+├── .env.example
+├── docker-compose.yml
+├── src/
+│   └── promptvault/
+│       ├── __init__.py
+│       ├── main.py               # Entry point for CLI and MCP server
+│       ├── config.py             # Settings management
+│       ├── db/
+│       │   ├── __init__.py
+│       │   ├── engine.py         # SQLAlchemy engine/session
+│       │   ├── models.py         # ORM models
+│       │   └── crud.py           # Database operations
+│       ├── core/
+│       │   ├── __init__.py
+│       │   ├── versioning.py     # Prompt versioning logic
+│       │   ├── diffing.py        # Diff algorithm
+│       │   ├── evaluation.py     # Evaluation engine
+│       │   └── providers.py      # LLM provider adapters
+│       ├── mcp_server/
+│       │   ├── __init__.py
+│       │   └── server.py         # MCP server implementation
+│       ├── cli/
+│       │   ├── __init__.py
+│       │   └── commands.py       # Typer CLI commands
+│       ├── api/
+│       │   ├── __init__.py
+│       │   ├── main.py           # FastAPI app
+│       │   ├── routes.py         # API endpoints
+│       │   └── schemas.py        # Pydantic request/response models
+│       └── web/                  # Optional static web UI
+│           ├── index.html
+│           └── app.js
+├── tests/
+│   ├── test_versioning.py
+│   ├── test_evaluation.py
+│   ├── test_mcp_server.py
+│   └── test_api.py
+└── docs/
+    ├── mcp-tools.md
+    ├── api.md
+    └── cli.md
+```
+
+---
+
+## 7. Data Model
+
+### 7.1 SQLAlchemy ORM Models
+
+```python
+class Prompt(Base):
+    __tablename__ = "prompts"
+    id: str = Column(String, primary_key=True, default=uuid4)
+    name: str = Column(String, unique=True, index=True, nullable=False)
+    description: str = Column(Text, default="")
+    tags: list[str] = Column(JSON, default=[])
+    current_version_id: str = Column(String, ForeignKey("prompt_versions.id"), nullable=True)
+    created_at: datetime = Column(DateTime, default=datetime.utcnow)
+    updated_at: datetime = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    versions: list["PromptVersion"] = relationship(back_populates="prompt")
+
+class PromptVersion(Base):
+    __tablename__ = "prompt_versions"
+    id: str = Column(String, primary_key=True, default=uuid4)
+    prompt_id: str = Column(String, ForeignKey("prompts.id"), index=True)
+    version_number: int = Column(Integer, nullable=False)
+    content: str = Column(Text, nullable=False)
+    variables: dict = Column(JSON, default={})       # e.g., {"topic": "string", "tone": "string"}
+    model_config: dict = Column(JSON, default={})    # e.g., {"provider": "openai", "model": "gpt-4o", "temperature": 0.7}
+    commit_message: str = Column(Text, default="")
+    parent_version_id: str = Column(String, ForeignKey("prompt_versions.id"), nullable=True)
+    created_at: datetime = Column(DateTime, default=datetime.utcnow)
+    created_by: str = Column(String, default="local")
+    prompt: Prompt = relationship(back_populates="versions")
+
+class Dataset(Base):
+    __tablename__ = "datasets"
+    id: str = Column(String, primary_key=True, default=uuid4)
+    name: str = Column(String, unique=True, index=True, nullable=False)
+    description: str = Column(Text, default="")
+    items: list[DatasetItem] = relationship(back_populates="dataset", cascade="all, delete-orphan")
+    created_at: datetime = Column(DateTime, default=datetime.utcnow)
+
+class DatasetItem(Base):
+    __tablename__ = "dataset_items"
+    id: str = Column(String, primary_key=True, default=uuid4)
+    dataset_id: str = Column(String, ForeignKey("datasets.id"), index=True)
+    input: dict = Column(JSON, nullable=False)          # Variables to fill prompt template
+    expected_output: str = Column(Text, nullable=True)  # Optional for evaluation
+    metadata: dict = Column(JSON, default={})
+    dataset: Dataset = relationship(back_populates="items")
+
+class Evaluation(Base):
+    __tablename__ = "evaluations"
+    id: str = Column(String, primary_key=True, default=uuid4)
+    prompt_version_id: str = Column(String, ForeignKey("prompt_versions.id"))
+    dataset_id: str = Column(String, ForeignKey("datasets.id"))
+    model_config: dict = Column(JSON, default={})
+    status: str = Column(String, default="pending")  # pending, running, completed, failed
+    metrics: dict = Column(JSON, default={})        # aggregate metrics
+    created_at: datetime = Column(DateTime, default=datetime.utcnow)
+    completed_at: datetime = Column(DateTime, nullable=True)
+    results: list[EvaluationResult] = relationship(back_populates="evaluation", cascade="all, delete-orphan")
+
+class EvaluationResult(Base):
+    __tablename__ = "evaluation_results"
+    id: str = Column(String, primary_key=True, default=uuid4)
+    evaluation_id: str = Column(String, ForeignKey("evaluations.id"), index=True)
+    dataset_item_id: str = Column(String, ForeignKey("dataset_items.id"))
+    input: dict = Column(JSON, nullable=False)
+    expected_output: str = Column(Text, nullable=True)
+    actual_output: str = Column(Text, nullable=True)
+    latency_ms: int = Column(Integer, nullable=True)
+    token_usage: dict = Column(JSON, default={})   # {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+    cost: float = Column(Float, nullable=True)
+    scores: dict = Column(JSON, default={})        # e.g., {"exact_match": 0.0, "semantic_similarity": 0.87}
+    error: str = Column(Text, nullable=True)
+    created_at: datetime = Column(DateTime, default=datetime.utcnow)
+    evaluation: Evaluation = relationship(back_populates="results")
+```
+
+**Notes:**
+- Use SQLite for MVP; the database file is `promptvault.db` in the current working directory or configurable via `PROMPTVAULT_DB_PATH`.
+- Use UUID strings as primary keys to avoid exposing integer IDs.
+- Version numbers are auto-incremented per prompt (1, 2, 3, ...).
+- Prompt content may include placeholders like `{variable_name}` for later substitution.
+
+---
+
+## 8. MCP Server Specification
+
+The MCP server is named `promptvault-mcp`. It communicates over **stdio** by default, as per MCP standard.
+
+### 8.1 MCP Tools
+
+| Tool Name | Description | Input Schema (JSON Schema) |
+|-----------|-------------|-----------------------------|
+| `prompt_create` | Create a new prompt with initial version. | `name` (string, required), `content` (string, required), `description` (string), `variables` (object), `model_config` (object), `commit_message` (string), `tags` (array of strings) |
+| `prompt_get` | Retrieve a specific version of a prompt. | `name` (string, required), `version` (integer, optional; default latest) |
+| `prompt_list` | List all prompts. | `tags` (array, optional), `limit` (integer, default 50), `offset` (integer, default 0) |
+| `prompt_versions` | List all versions of a prompt. | `name` (string, required) |
+| `prompt_diff` | Show diff between two prompt versions. | `name` (string, required), `version_a` (integer), `version_b` (integer) |
+| `prompt_rollback` | Set a previous version as the current version (creates a new version with content from target). | `name` (string, required), `version` (integer, required), `commit_message` (string, optional) |
+| `dataset_create` | Create a new dataset from items. | `name` (string, required), `description` (string), `items` (array of objects with `input` and `expected_output`) |
+| `dataset_list` | List datasets. | `limit`, `offset` |
+| `dataset_get` | Get a dataset with items. | `name` (string, required) |
+| `evaluation_run` | Run evaluation of a prompt version against a dataset. | `prompt_name` (string, required), `version` (integer, optional; default latest), `dataset_name` (string, required), `model_config` (object, optional; overrides prompt default) |
+| `evaluation_status` | Check status of an evaluation run. | `evaluation_id` (string, required) |
+| `evaluation_report` | Get full evaluation report with results and metrics. | `evaluation_id` (string, required) |
+| `evaluation_compare` | Compare two evaluation runs. | `evaluation_id_a` (string), `evaluation_id_b` (string) |
+
+### 8.2 MCP Resources
+
+| URI Pattern | Description | Returns |
+|-------------|-------------|---------|
+| `prompt://{name}/latest` | Get latest version of a prompt as text. | Prompt content string (or object with metadata?) |
+| `prompt://{name}/version/{version}` | Get specific version content. | Prompt content string |
+| `dataset://{dataset_name}` | Get dataset items as JSON. | Array of items |
+| `evaluation://{evaluation_id}/report` | Get evaluation report as JSON. | Report object |
+
+**Notes:**
+- Resources should be read-only and return data that can be directly used by the MCP client.
+- For `prompt://` resources, return a JSON object with `name`, `version`, `content`, and `metadata` to avoid ambiguity.
+
+### 8.3 MCP Prompts (Optional)
+The server may expose a prompt template itself, e.g., `promptvault-summarize-eval`, but this is not required for MVP.
+
+### 8.4 Example MCP Interaction
+
+```json
+// Tool call: prompt_create
+{
+  "tool": "prompt_create",
+  "arguments": {
+    "name": "summarize-article",
+    "content": "Summarize the following article in {tone} style:\n\n{article}",
+    "description": "Summarizes an article",
+    "variables": {"tone": "concise", "article": "string"},
+    "model_config": {"provider": "openai", "model": "gpt-4o-mini", "temperature": 0.2},
+    "tags": ["summarization", "content"]
+  }
+}
+```
+
+---
+
+## 9. CLI Specification
+
+The CLI is named `promptctl`. It wraps the same core functions as the MCP server.
+
+### 9.1 Global Options
+- `--db-path` or `PROMPTVAULT_DB_PATH` env var to specify SQLite file (default `./promptvault.db`).
+- `--verbose` for debug logging.
+
+### 9.2 Commands
+
+#### `promptctl prompt create`
+```
+promptctl prompt create <name> --content <text-or-file> [--description TEXT] [--variables JSON] [--model-config JSON] [--commit-message TEXT] [--tags LIST]
+```
+- `--content` can be a string or `@file.txt` to read from file.
+- `--variables` and `--model-config` accept JSON strings or `@file.json`.
+- Output: JSON with prompt ID and version number.
+
+#### `promptctl prompt list`
+```
+promptctl prompt list [--tags TAG1,TAG2] [--limit N] [--offset M]
+```
+- Output: table or JSON.
+
+#### `promptctl prompt show`
+```
+promptctl prompt show <name> [--version N]
+```
+- Output: prompt content and metadata.
+
+#### `promptctl prompt versions`
+```
+promptctl prompt versions <name>
+```
+- List all versions with commit messages and timestamps.
+
+#### `promptctl prompt diff`
+```
+promptctl prompt diff <name> <version-a> <version-b>
+```
+- Output unified diff.
+
+#### `promptctl prompt rollback`
+```
+promptctl prompt rollback <name> --version N [--commit-message TEXT]
+```
+- Creates a new version with content from version N and sets it as current.
+
+#### `promptctl dataset create`
+```
+promptctl dataset create <name> --file <jsonl-or-json> [--description TEXT]
+```
+- `--file` format: either JSONL where each line is `{"input": {...}, "expected_output": "..."}` or a JSON array of such objects.
+
+#### `promptctl dataset list`
+```
+promptctl dataset list [--limit N] [--offset M]
+```
+
+#### `promptctl eval run`
+```
+promptctl eval run <prompt-name> --version N --dataset <dataset-name> [--model-config JSON]
+```
+- Runs evaluation synchronously for MVP.
+- Output: evaluation ID and summary metrics.
+
+#### `promptctl eval report`
+```
+promptctl eval report <evaluation-id> [--format json|table]
+```
+
+#### `promptctl serve`
+```
+promptctl serve [--stdio|--http] [--port 8000]
+```
+- Starts the MCP server over stdio (default) or REST API over HTTP.
+
+#### `promptctl web`
+```
+promptctl web [--port 8080]
+```
+- Starts the optional web UI.
+
+---
+
+## 10. REST API Specification
+
+### 10.1 Base URL
+`http://localhost:8000/api`
+
+### 10.2 Endpoints
+
+| Method | Path | Description | Request Body | Response |
+|--------|------|-------------|--------------|----------|
+| POST | `/prompts` | Create prompt | `{name, content, description?, variables?, model_config?, commit_message?, tags?}` | Prompt object with version |
+| GET | `/prompts` | List prompts | Query params: `tags`, `limit`, `offset` | Array of prompt objects |
+| GET | `/prompts/{name}` | Get prompt latest | - | Prompt object with content |
+| GET | `/prompts/{name}/versions` | List versions | - | Array of version objects |
+| GET | `/prompts/{name}/versions/{version}` | Get specific version | - | Version object |
+| POST | `/prompts/{name}/rollback` | Rollback to version | `{version, commit_message?}` | New version object |
+| POST | `/datasets` | Create dataset | `{name, description?, items: [{input, expected_output?}]}` | Dataset object |
+| GET | `/datasets` | List datasets | - | Array of dataset objects |
+| GET | `/datasets/{name}` | Get dataset with items | - | Dataset object |
+| POST | `/evaluations` | Run evaluation | `{prompt_name, version?, dataset_name, model_config?}` | Evaluation object with status |
+| GET | `/evaluations/{id}` | Get evaluation status | - | Evaluation object |
+| GET | `/evaluations/{id}/report` | Get evaluation report | - | Report object with results |
+
+**Response Format:** All responses use standard JSON. Errors use `{"error": "message", "detail": "..."}` with appropriate HTTP status codes.
+
+---
+
+## 11. Evaluation Engine
+
+### 11.1 Supported Providers
+- **OpenAI**: via `openai` Python SDK; requires `OPENAI_API_KEY`.
+- **Anthropic**: via `anthropic` Python SDK; requires `ANTHROPIC_API_KEY`.
+- **Ollama-compatible**: via `httpx` to `http://localhost:11434/api/chat`; no key required.
+
+The provider is selected by `model_config.provider` or globally in `.env` as `PROMPTVAULT_DEFAULT_PROVIDER`.
+
+### 11.2 Evaluation Flow
+1. Load prompt version and dataset items.
+2. For each dataset item:
+   - Substitute variables in prompt content using `input` dict.
+   - Call the specified LLM provider with the prompt and model config.
+   - Record `actual_output`, `latency_ms`, `token_usage`, `cost`, and `error` (if any).
+   - Compute scores:
+     - **Exact Match:** 1.0 if `actual_output.strip().lower() == expected_output.strip().lower()`, else 0.0.
+     - **Semantic Similarity:** Use embeddings (e.g., OpenAI `text-embedding-3-small` or local sentence-transformers) to compute cosine similarity between expected and actual outputs. This is optional; if embeddings unavailable, skip.
+     - **LLM-as-Judge (optional):** A separate LLM call that rates the output on a scale 1-5. Only if `model_config.judge` is set.
+3. Aggregate metrics across all items:
+   - `avg_latency_ms`
+   - `avg_cost`
+   - `total_tokens`
+   - `exact_match_rate` (fraction of exact matches)
+   - `avg_semantic_similarity` (if computed)
+   - `avg_llm_judge_score` (if computed)
+4. Save evaluation and results to database; mark status `completed` or `failed`.
+
+### 11.3 Cost Calculation
+- For OpenAI/Anthropic, use token usage from API response and known per-token pricing in `model_config.cost_per_1k_tokens` if provided; otherwise use built-in price table (can be in `config.py`).
+- If cost cannot be calculated, set `cost = 0.0` and note in metrics.
+
+### 11.4 Evaluation Report Format
+```json
+{
+  "evaluation_id": "uuid",
+  "prompt_name": "summarize-article",
+  "version": 3,
+  "dataset_name": "article-summaries",
+  "model_config": {"provider": "openai", "model": "gpt-4o-mini"},
+  "status": "completed",
+  "metrics": {
+    "avg_latency_ms": 1200,
+    "avg_cost": 0.0042,
+    "total_tokens": 3500,
+    "exact_match_rate": 0.0,
+    "avg_semantic_similarity": 0.87,
+    "avg_llm_judge_score": 4.1
+  },
+  "results": [
+    {
+      "dataset_item_id": "uuid",
+      "input": {"article": "..."},
+      "expected_output": "...",
+      "actual_output": "...",
+      "latency_ms": 1100,
+      "token_usage": {"prompt_tokens": 500, "completion_tokens": 200, "total_tokens": 700},
+      "cost": 0.0035,
+      "scores": {"exact_match": 0.0, "semantic_similarity": 0.85}
+    }
+  ]
+}
+```
+
+---
+
+## 12. Configuration
+
+### 12.1 Environment Variables (`.env`)
+```
+PROMPTVAULT_DB_PATH=./promptvault.db
+PROMPTVAULT_DEFAULT_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+OLLAMA_BASE_URL=http://localhost:11434
+EMBEDDING_PROVIDER=openai   # or "local" for sentence-transformers
+```
+
+### 12.2 Default Model Config
+If not provided at prompt creation or evaluation time, use:
+```json
+{
+  "provider": "openai",
+  "model": "gpt-4o-mini",
+  "temperature": 0.0,
+  "max_tokens": 512
+}
+```
+
+---
+
+## 13. Security & Permissions
+
+- **Local-first:** All data stays on user's machine; no external calls except to LLM APIs during evaluation.
+- **API Keys:** Stored only in environment variables or `.env`; never in database.
+- **MCP Server:** Runs locally over stdio; no authentication required for MVP.
+- **REST API:** For MVP, bind to `127.0.0.1` by default. If exposed, warn user. Basic auth can be added later.
+- **Input Validation:** Validate all inputs using Pydantic; prevent SQL injection via SQLAlchemy ORM.
+- **Prompt Content:** No sandboxing needed for MVP because prompts are just text; but avoid executing arbitrary code.
+
+---
+
+## 14. Testing Plan
+
+### 14.1 Unit Tests
+- Versioning logic: create, list, get, rollback, diff.
+- Diff algorithm correctness.
+- Dataset CRUD.
+- Evaluation engine with mocked LLM provider.
+- Cost calculation.
+- MCP tool handlers.
+
+### 14.2 Integration Tests
+- CLI commands against temporary SQLite database.
+- REST API endpoints using FastAPI TestClient.
+- MCP server communication using MCP client test harness.
+
+### 14.3 Manual Test Scenarios
+- Start MCP server with Claude Desktop and issue tool calls.
+- Create prompt with variables, run evaluation with a small dataset, view report.
+- Rollback prompt and verify new version created.
+- Run CLI and REST API side by side on same database.
+
+### 14.4 CI/CD (GitHub Actions)
+- Run `ruff` and `mypy` on push.
+- Run pytest.
+- Build Docker image.
+
+---
+
+## 15. Documentation Requirements
+
+### 15.1 README.md
+Must include:
+- Project description and badges.
+- Quickstart: install, create a prompt, evaluate, use MCP.
+- CLI reference summary.
+- MCP tools table.
+- REST API examples.
+- Configuration guide.
+- Architecture diagram (text or image).
+
+### 15.2 docs/
+- `mcp-tools.md`: Detailed MCP tool and resource schemas.
+- `api.md`: Full REST API documentation with examples.
+- `cli.md`: Full CLI command reference.
+
+### 15.3 In-Code Documentation
+- Docstrings for all public functions/classes.
+- Type hints on all function signatures.
+
+---
+
+## 16. Acceptance Criteria
+
+The project is considered complete when:
+
+1. **Versioning:** User can create a prompt, list versions, show specific version, diff two versions, and rollback.
+2. **Datasets:** User can create a dataset from JSONL/JSON and list/get it.
+3. **Evaluation:** User can run evaluation of a prompt version against a dataset and retrieve a report with metrics.
+4. **MCP:** Server exposes all tools and resources; works with at least one MCP client (Claude Desktop or test client).
+5. **CLI:** All commands work and have `--help` output.
+6. **REST API:** All endpoints work and return proper JSON.
+7. **Web UI:** A minimal UI exists that allows viewing prompts and evaluation reports (read-only is acceptable).
+8. **Tests:** Unit and integration tests pass with >80% coverage on core modules.
+9. **Documentation:** README and docs are clear enough for a new user to get started in under 10 minutes.
+10. **License:** Project uses MIT license.
+
+---
+
+## 17. Milestones & Task Breakdown
+
+### Milestone 0: Project Setup
+- Initialize Python project with Poetry.
+- Set up SQLAlchemy models and DB engine.
+- Create config management.
+- Set up basic CLI skeleton with Typer.
+- Add `.env.example`, `.gitignore`, README stub.
+
+### Milestone 1: Core Versioning Engine
+- Implement CRUD for prompts and versions.
+- Implement diff algorithm (use `difflib` or `deepdiff`).
+- Implement rollback logic.
+- Unit tests for versioning.
+
+### Milestone 2: CLI Commands
+- Implement all prompt and dataset CLI commands.
+- Add JSON/table output formatting.
+- Integration tests for CLI.
+
+### Milestone 3: MCP Server
+- Implement MCP server with all tools/resources using `mcp` SDK.
+- Write tests with MCP test client.
+- Document MCP tools.
+
+### Milestone 4: Evaluation Engine
+- Implement LLM provider adapters for OpenAI, Anthropic, Ollama.
+- Implement evaluation flow and metrics.
+- Store results.
+- Unit tests with mocked providers.
+
+### Milestone 5: REST API
+- Implement FastAPI app with all endpoints.
+- Add Pydantic schemas.
+- Integration tests with TestClient.
+
+### Milestone 6: Web UI (Optional)
+- Simple single-page HTML/JS that fetches from REST API.
+- Display prompt list, version history, and evaluation reports.
+
+### Milestone 7: Polish & Release
+- Improve documentation.
+- Add Dockerfile and docker-compose.
+- Set up CI.
+- Prepare launch post for X and LinkedIn.
+
+---
+
+## 18. Definition of Done
+
+Each feature is done when:
+- Code is merged to `main`.
+- Unit tests pass.
+- CLI/REST/MCP behavior is manually verified.
+- Documentation is updated.
+- No critical linting errors.
+
+---
+
+## 19. Future Enhancements (Post-MVP)
+
+- Authentication and multi-user support.
+- Async evaluation with background workers.
+- Support for more LLM providers (Gemini, Mistral, etc.).
+- Prompt templates with advanced validation.
+- Evaluation scheduling and alerting.
+- Git integration for prompt storage.
+- SDK for Python/TypeScript.
+- Cloud-hosted version with team workspaces.
+
+---
+
+## 20. Final Notes for the Agent
+
+- Follow the structure and specifications exactly, but use judgment for implementation details not specified.
+- If a requirement is ambiguous or conflicting, choose the simplest reasonable approach and document it in code comments or README.
+- Prioritize MCP server and CLI over REST/Web UI if time constraints arise.
+- Keep the codebase modular to allow future features without major refactoring.
+- The goal is a **working MVP** that demonstrates the value on X and LinkedIn, not a perfect enterprise product.
+
+---
+
+**End of Master Instruction Document**

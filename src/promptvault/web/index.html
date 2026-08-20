@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PromptVault</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { background: #1a1a2e; color: white; padding: 20px 0; margin-bottom: 30px; }
+        header h1 { font-size: 24px; }
+        header p { color: #aaa; margin-top: 5px; }
+        .nav { display: flex; gap: 20px; margin-bottom: 20px; }
+        .nav button { padding: 10px 20px; border: none; background: #e0e0e0; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .nav button.active { background: #1a1a2e; color: white; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card h3 { margin-bottom: 10px; }
+        .card pre { background: #f8f8f8; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 13px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f8f8; font-weight: 600; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-error { background: #f8d7da; color: #721c24; }
+        .hidden { display: none; }
+        #loading { text-align: center; padding: 40px; color: #666; }
+        .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+        .metric { text-align: center; padding: 15px; background: #f8f8f8; border-radius: 8px; }
+        .metric .value { font-size: 24px; font-weight: bold; color: #1a1a2e; }
+        .metric .label { font-size: 12px; color: #666; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>PromptVault</h1>
+            <p>Prompt versioning, evaluation, and management</p>
+        </div>
+    </header>
+    <div class="container">
+        <div class="nav">
+            <button class="active" onclick="showSection('prompts')">Prompts</button>
+            <button onclick="showSection('datasets')">Datasets</button>
+            <button onclick="showSection('evaluations')">Evaluations</button>
+        </div>
+        <div id="loading">Loading...</div>
+        <div id="prompts-section" class="hidden"></div>
+        <div id="datasets-section" class="hidden"></div>
+        <div id="evaluations-section" class="hidden"></div>
+    </div>
+    <script>
+        const API = '/api';
+
+        async function fetchJSON(url) {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        }
+
+        function showSection(section) {
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('[id$="-section"]').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`${section}-section`).classList.remove('hidden');
+            loadSection(section);
+        }
+
+        async function loadSection(section) {
+            document.getElementById('loading').style.display = 'block';
+            try {
+                if (section === 'prompts') await loadPrompts();
+                else if (section === 'datasets') await loadDatasets();
+                else if (section === 'evaluations') await loadEvaluations();
+            } catch (e) {
+                document.getElementById(`${section}-section`).innerHTML = `<div class="card"><p>Error: ${e.message}</p></div>`;
+            }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        async function loadPrompts() {
+            const data = await fetchJSON(`${API}/prompts`);
+            const el = document.getElementById('prompts-section');
+            if (data.length === 0) { el.innerHTML = '<div class="card"><p>No prompts found. Create one via CLI or MCP.</p></div>'; return; }
+            el.innerHTML = data.map(p => `
+                <div class="card">
+                    <h3>${p.name}</h3>
+                    <p>${p.description || 'No description'}</p>
+                    <p><small>Tags: ${(p.tags || []).join(', ') || 'none'} | Created: ${p.created_at || 'N/A'}</small></p>
+                </div>`).join('');
+        }
+
+        async function loadDatasets() {
+            const data = await fetchJSON(`${API}/datasets`);
+            const el = document.getElementById('datasets-section');
+            if (data.length === 0) { el.innerHTML = '<div class="card"><p>No datasets found.</p></div>'; return; }
+            el.innerHTML = data.map(d => `
+                <div class="card">
+                    <h3>${d.name}</h3>
+                    <p>${d.description || 'No description'}</p>
+                    <p><small>Items: ${d.items_count} | Created: ${d.created_at || 'N/A'}</small></p>
+                </div>`).join('');
+        }
+
+        async function loadEvaluations() {
+            const el = document.getElementById('evaluations-section');
+            el.innerHTML = '<div class="card"><p>Evaluations can be run via CLI or MCP server.</p></div>';
+        }
+
+        loadSection('prompts');
+    </script>
+</body>
+</html>
