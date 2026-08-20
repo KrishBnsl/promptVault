@@ -1,5 +1,5 @@
 [project]
-name = "promptvault"
+name = "pvlt"
 version = "0.1.0"
 description = "Open-source prompt versioning, evaluation, and management as an MCP server."
 readme = "README.md"
