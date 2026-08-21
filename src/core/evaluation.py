@@ -49,12 +49,12 @@ def compute_cost(
         output_cost = (
             token_usage.get("completion_tokens", 0) / 1000
         ) * cost_per_1k.get("output", 0)
-        return round(input_cost + output_cost, 6)
+        return float(round(input_cost + output_cost, 6))
 
     prices = COST_TABLE.get(model, {"input": 0, "output": 0})
     input_cost = (token_usage.get("prompt_tokens", 0) / 1000) * prices["input"]
     output_cost = (token_usage.get("completion_tokens", 0) / 1000) * prices["output"]
-    return round(input_cost + output_cost, 6)
+    return float(round(input_cost + output_cost, 6))
 
 
 def compute_exact_match(actual: str, expected: str) -> float:
@@ -138,7 +138,11 @@ class EvaluationEngine:
         if not dataset:
             raise ValueError(f"Dataset '{dataset_name}' not found")
 
-        effective_config = {**DEFAULT_MODEL_CONFIG, **(model_config or {})}
+        effective_config = {
+            **DEFAULT_MODEL_CONFIG,
+            **(prompt_version.model_config or {}),
+            **(model_config or {}),
+        }
         provider_name = effective_config.get("provider", "openai")
 
         evaluation = crud.create_evaluation(
@@ -223,15 +227,16 @@ class EvaluationEngine:
                 )
 
             metrics = aggregate_metrics(results)
+            final_status = "failed" if results and metrics["successful_items"] == 0 else "completed"
             crud.update_evaluation_status(
-                self.db, evaluation.id, "completed", metrics
+                self.db, evaluation.id, final_status, metrics
             )
 
             return evaluation.id
 
-        except Exception as e:
+        except Exception:
             crud.update_evaluation_status(self.db, evaluation.id, "failed")
-            raise e
+            raise
 
     def get_report(self, evaluation_id: str) -> dict | None:
         """Get a full evaluation report."""
@@ -239,14 +244,16 @@ class EvaluationEngine:
         if not evaluation:
             return None
 
-        prompt_version_id = evaluation.prompt_version_id
-        if ":" in prompt_version_id:
-            prompt_version_id = prompt_version_id.split(":")[0]
-
+        prompt_version = crud.get_prompt_version_by_id(self.db, evaluation.prompt_version_id)
+        prompt = crud.get_prompt_by_id(self.db, prompt_version.prompt_id) if prompt_version else None
+        dataset = crud.get_dataset_by_id(self.db, evaluation.dataset_id)
         results = crud.get_evaluation_results(self.db, evaluation_id)
 
         return {
             "evaluation_id": evaluation.id,
+            "prompt_name": prompt.name if prompt else None,
+            "version": prompt_version.version_number if prompt_version else None,
+            "dataset_name": dataset.name if dataset else None,
             "status": evaluation.status,
             "model_config": evaluation.model_config,
             "metrics": evaluation.metrics,

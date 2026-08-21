@@ -9,6 +9,7 @@ from db.models import (
     EvaluationResult,
     Prompt,
     PromptVersion,
+    utcnow,
 )
 
 # --- Prompt Operations ---
@@ -66,11 +67,12 @@ def list_prompts(
     db: Session, tags: list[str] | None = None, limit: int = 50, offset: int = 0
 ) -> list[Prompt]:
     """List prompts with optional tag filtering."""
-    query = db.query(Prompt)
+    query = db.query(Prompt).order_by(Prompt.created_at.desc())
     if tags:
-        for tag in tags:
-            query = query.filter(Prompt.tags.contains(tag))
-    return query.order_by(Prompt.created_at.desc()).offset(offset).limit(limit).all()
+        prompts = query.all()
+        exact_matches = [prompt for prompt in prompts if all(tag in (prompt.tags or []) for tag in tags)]
+        return exact_matches[offset : offset + limit]
+    return query.offset(offset).limit(limit).all()
 
 
 def get_prompt_version(
@@ -95,6 +97,11 @@ def get_latest_version(db: Session, prompt_id: str) -> PromptVersion | None:
         .order_by(PromptVersion.version_number.desc())
         .first()
     )
+
+
+def get_prompt_version_by_id(db: Session, version_id: str) -> PromptVersion | None:
+    """Get a prompt version by its ID."""
+    return db.query(PromptVersion).filter(PromptVersion.id == version_id).first()
 
 
 def list_prompt_versions(db: Session, prompt_id: str) -> list[PromptVersion]:
@@ -180,15 +187,19 @@ def create_dataset(
     db: Session, name: str, description: str = "", items: list[dict] | None = None
 ) -> Dataset:
     """Create a new dataset with items."""
+    if not name.strip():
+        raise ValueError("Dataset name cannot be empty")
     dataset = Dataset(name=name, description=description)
     db.add(dataset)
     db.flush()
 
     if items:
         for item_data in items:
+            if "input" not in item_data or not isinstance(item_data["input"], dict):
+                raise ValueError("Each dataset item must contain an object-valued 'input'")
             item = DatasetItem(
                 dataset_id=dataset.id,
-                input=item_data.get("input", {}),
+                input=item_data["input"],
                 expected_output=item_data.get("expected_output"),
                 item_metadata=item_data.get("metadata", {}),
             )
@@ -214,6 +225,17 @@ def list_datasets(db: Session, limit: int = 50, offset: int = 0) -> list[Dataset
     return (
         db.query(Dataset)
         .order_by(Dataset.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+
+def list_evaluations(db: Session, limit: int = 50, offset: int = 0) -> list[Evaluation]:
+    """List evaluation runs, newest first."""
+    return (
+        db.query(Evaluation)
+        .order_by(Evaluation.created_at.desc())
         .offset(offset)
         .limit(limit)
         .all()
@@ -254,12 +276,10 @@ def update_evaluation_status(
     evaluation = get_evaluation(db, evaluation_id)
     if evaluation:
         evaluation.status = status
-        if metrics:
+        if metrics is not None:
             evaluation.metrics = metrics
         if status in ("completed", "failed"):
-            from datetime import datetime
-
-            evaluation.completed_at = datetime.utcnow()
+            evaluation.completed_at = utcnow()
         db.commit()
         db.refresh(evaluation)
     return evaluation

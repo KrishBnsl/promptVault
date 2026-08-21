@@ -1,22 +1,8 @@
 """Tests for prompt versioning logic."""
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from core.versioning import VersioningEngine
-from db.engine import Base
-
-
-@pytest.fixture
-def db_session():
-    """Create a test database session."""
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
-    Base.metadata.create_all(bind=engine)
-    db_session_maker = sessionmaker(bind=engine)
-    session = db_session_maker()
-    yield session
-    session.close()
 
 
 class TestVersioningEngine:
@@ -89,6 +75,26 @@ class TestVersioningEngine:
         assert version.version_number == 2
         assert version.content == "Hello v2"
 
+    def test_create_version(self, db_session):
+        """Creating updated content appends an immutable version."""
+        engine = VersioningEngine(db_session)
+        engine.create_prompt(
+            name="test-prompt",
+            content="Hello v1",
+            variables={"name": "string"},
+            model_config={"provider": "ollama"},
+        )
+
+        version = engine.create_version(
+            "test-prompt", "Hello v2", commit_message="Improve greeting"
+        )
+
+        assert version.version_number == 2
+        assert version.content == "Hello v2"
+        assert version.variables == {"name": "string"}
+        assert version.model_config == {"provider": "ollama"}
+        assert engine.get_version("test-prompt", 1).content == "Hello v1"
+
     def test_list_versions(self, db_session):
         """Test listing all versions of a prompt."""
         engine = VersioningEngine(db_session)
@@ -122,6 +128,14 @@ class TestVersioningEngine:
         prompts = engine.list_prompts(tags=["tag1"])
         assert len(prompts) == 1
         assert prompts[0].name == "prompt-1"
+
+    def test_tag_filter_does_not_match_substrings(self, db_session):
+        """Tag filtering uses exact tag membership."""
+        engine = VersioningEngine(db_session)
+        engine.create_prompt(name="exact", content="Hello", tags=["foo"])
+        engine.create_prompt(name="substring", content="Hello", tags=["foobar"])
+
+        assert [prompt.name for prompt in engine.list_prompts(tags=["foo"])] == ["exact"]
 
     def test_rollback(self, db_session):
         """Test rolling back to a previous version."""

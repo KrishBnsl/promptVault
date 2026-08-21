@@ -8,13 +8,24 @@ class PromptCreate(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    name: str
-    content: str
+    name: str = Field(min_length=1)
+    content: str = Field(min_length=1)
     description: str = ""
     variables: dict | None = None
     llm_config: dict | None = Field(None, alias="model_config")
     commit_message: str = ""
     tags: list[str] | None = None
+
+
+class PromptVersionCreate(BaseModel):
+    """Request model for creating a new immutable prompt version."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    content: str = Field(min_length=1)
+    variables: dict | None = None
+    llm_config: dict | None = Field(None, alias="model_config")
+    commit_message: str = ""
 
 
 class PromptResponse(BaseModel):
@@ -49,12 +60,20 @@ class RollbackRequest(BaseModel):
     commit_message: str = ""
 
 
+class DatasetItemCreate(BaseModel):
+    """Validated dataset item."""
+
+    input: dict
+    expected_output: str | None = None
+    metadata: dict = Field(default_factory=dict)
+
+
 class DatasetCreate(BaseModel):
     """Request model for creating a dataset."""
 
-    name: str
+    name: str = Field(min_length=1)
     description: str = ""
-    items: list[dict]
+    items: list[DatasetItemCreate]
 
 
 class DatasetResponse(BaseModel):

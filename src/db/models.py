@@ -1,6 +1,6 @@
 """SQLAlchemy ORM models for PromptVault."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -22,6 +22,11 @@ def generate_uuid() -> str:
     return str(uuid4())
 
 
+def utcnow() -> datetime:
+    """Return a naive UTC timestamp for SQLite compatibility."""
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 class Prompt(Base):
     """A prompt with metadata and version history."""
 
@@ -35,9 +40,9 @@ class Prompt(Base):
     current_version_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("prompt_versions.id"), nullable=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=utcnow, onupdate=utcnow
     )
     versions: Mapped[list["PromptVersion"]] = relationship(
         back_populates="prompt",
@@ -62,7 +67,7 @@ class PromptVersion(Base):
     parent_version_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("prompt_versions.id"), nullable=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     created_by: Mapped[str] = mapped_column(String, default="local")
     prompt: Mapped["Prompt"] = relationship(
         back_populates="versions",
@@ -82,7 +87,7 @@ class Dataset(Base):
     items: Mapped[list["DatasetItem"]] = relationship(
         back_populates="dataset", cascade="all, delete-orphan"
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class DatasetItem(Base):
@@ -111,7 +116,7 @@ class Evaluation(Base):
     model_config: Mapped[dict] = mapped_column(JSON, default={})
     status: Mapped[str] = mapped_column(String, default="pending")
     metrics: Mapped[dict] = mapped_column(JSON, default={})
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     results: Mapped[list["EvaluationResult"]] = relationship(
         back_populates="evaluation", cascade="all, delete-orphan"
@@ -135,5 +140,5 @@ class EvaluationResult(Base):
     cost: Mapped[float | None] = mapped_column(Float, nullable=True)
     scores: Mapped[dict] = mapped_column(JSON, default={})
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     evaluation: Mapped["Evaluation"] = relationship(back_populates="results")

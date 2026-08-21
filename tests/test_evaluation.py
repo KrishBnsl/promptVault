@@ -2,11 +2,14 @@
 
 
 from core.evaluation import (
+    EvaluationEngine,
     aggregate_metrics,
     compute_cost,
     compute_exact_match,
     substitute_variables,
 )
+from core.versioning import VersioningEngine
+from db import crud
 
 
 class TestEvaluationHelpers:
@@ -67,3 +70,58 @@ class TestEvaluationHelpers:
         """Test aggregation with empty results."""
         metrics = aggregate_metrics([])
         assert metrics == {}
+
+
+class TestEvaluationEngine:
+    """End-to-end evaluation behavior with a fake provider."""
+
+    def test_uses_prompt_model_config(self, db_session, monkeypatch):
+        VersioningEngine(db_session).create_prompt(
+            "configured",
+            "Hello {name}",
+            model_config={"provider": "ollama", "model": "llama3.2", "temperature": 0.7},
+        )
+        crud.create_dataset(
+            db_session,
+            "dataset",
+            items=[{"input": {"name": "Ada"}, "expected_output": "Hello Ada"}],
+        )
+        calls = {}
+
+        class FakeProvider:
+            def generate(self, **kwargs):
+                calls["generate"] = kwargs
+                return {
+                    "content": "Hello Ada",
+                    "token_usage": {"prompt_tokens": 2, "completion_tokens": 2, "total_tokens": 4},
+                    "latency_ms": 5,
+                }
+
+        def get_fake_provider(name):
+            calls["provider"] = name
+            return FakeProvider()
+
+        monkeypatch.setattr("core.evaluation.get_provider", get_fake_provider)
+        evaluation_id = EvaluationEngine(db_session).run_evaluation("configured", "dataset")
+        report = EvaluationEngine(db_session).get_report(evaluation_id)
+
+        assert calls["provider"] == "ollama"
+        assert calls["generate"]["model"] == "llama3.2"
+        assert report["prompt_name"] == "configured"
+        assert report["dataset_name"] == "dataset"
+        assert report["status"] == "completed"
+
+    def test_all_provider_failures_mark_evaluation_failed(self, db_session, monkeypatch):
+        VersioningEngine(db_session).create_prompt("configured", "Hello")
+        crud.create_dataset(db_session, "dataset", items=[{"input": {}, "expected_output": "Hi"}])
+
+        class BrokenProvider:
+            def generate(self, **kwargs):
+                raise RuntimeError("provider unavailable")
+
+        monkeypatch.setattr("core.evaluation.get_provider", lambda _name: BrokenProvider())
+        evaluation_id = EvaluationEngine(db_session).run_evaluation("configured", "dataset")
+        report = EvaluationEngine(db_session).get_report(evaluation_id)
+
+        assert report["status"] == "failed"
+        assert report["metrics"]["failed_items"] == 1

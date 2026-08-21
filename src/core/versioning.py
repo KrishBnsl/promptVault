@@ -23,6 +23,10 @@ class VersioningEngine:
         tags: list[str] | None = None,
     ) -> tuple[Prompt, PromptVersion]:
         """Create a new prompt with initial version."""
+        if not name.strip():
+            raise ValueError("Prompt name cannot be empty")
+        if not content:
+            raise ValueError("Prompt content cannot be empty")
         existing = crud.get_prompt(self.db, name)
         if existing:
             raise ValueError(f"Prompt '{name}' already exists")
@@ -35,6 +39,29 @@ class VersioningEngine:
             model_config=model_config,
             commit_message=commit_message,
             tags=tags,
+        )
+
+    def create_version(
+        self,
+        name: str,
+        content: str,
+        variables: dict | None = None,
+        model_config: dict | None = None,
+        commit_message: str = "",
+    ) -> PromptVersion:
+        """Create the next immutable version of an existing prompt."""
+        prompt = crud.get_prompt(self.db, name)
+        if not prompt:
+            raise ValueError(f"Prompt '{name}' not found")
+        if not content:
+            raise ValueError("Prompt content cannot be empty")
+        return crud.create_prompt_version(
+            self.db,
+            prompt_id=prompt.id,
+            content=content,
+            variables=variables,
+            model_config=model_config,
+            commit_message=commit_message,
         )
 
     def get_prompt(self, name: str) -> Prompt | None:

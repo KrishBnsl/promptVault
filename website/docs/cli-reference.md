@@ -74,6 +74,14 @@ promptctl prompt show <name> [--version 2] [--json]
 | `--version` | `-v` | Specific version (default: latest) |
 | `--json` | | Output as JSON |
 
+### promptctl prompt update
+
+Create the next immutable version of an existing prompt.
+
+```bash
+promptctl prompt update <name> --content <text-or-file> [--variables JSON] [--model-config JSON] [--commit-message TEXT]
+```
+
 ### promptctl prompt versions
 
 List all versions of a prompt.

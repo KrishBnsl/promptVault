@@ -94,6 +94,16 @@ List all versions of a prompt.
 curl http://localhost:8000/api/prompts/summarizer/versions
 ```
 
+### POST /api/prompts/`{name}`/versions
+
+Create the next immutable prompt version.
+
+```bash
+curl -X POST http://localhost:8000/api/prompts/summarizer/versions \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Updated prompt", "commit_message": "Improve instructions"}'
+```
+
 ### GET /api/prompts/`{name}`/versions/`{version}`
 
 Get specific version.

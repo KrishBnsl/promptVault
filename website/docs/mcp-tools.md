@@ -5,7 +5,7 @@ title: MCP Tools
 
 # MCP Tools Reference
 
-PromptVault exposes 13 tools and 4 resources via MCP (Model Context Protocol) over stdio.
+PromptVault exposes 14 tools and 4 resources via MCP (Model Context Protocol) over stdio.
 
 **Server name:** `pvlt-mcp`
 
@@ -51,6 +51,18 @@ Create a new prompt with initial version.
   "tags": ["code-review", "dev"]
 }
 ```
+
+### prompt_update
+
+Create the next immutable version of an existing prompt.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | Existing prompt name |
+| `content` | string | Yes | New prompt content |
+| `variables` | object | No | Variables; inherits when omitted |
+| `model_config` | object | No | Model configuration; inherits when omitted |
+| `commit_message` | string | No | Description of the change |
 
 ### prompt_get
 
