@@ -1,12 +1,13 @@
 """API endpoint routes for PromptVault REST API."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from api.schemas import (
     DatasetCreate,
     EvaluationRunRequest,
     PromptCreate,
+    PromptVersionCreate,
     RollbackRequest,
 )
 from core.evaluation import EvaluationEngine
@@ -48,7 +49,12 @@ def create_prompt(request: PromptCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/prompts")
-def list_prompts(tags: str = None, limit: int = 50, offset: int = 0, db: Session = Depends(get_db)):
+def list_prompts(
+    tags: str | None = None,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
     """List all prompts."""
     tags_list = [t.strip() for t in tags.split(",")] if tags else None
     engine = VersioningEngine(db)
@@ -113,6 +119,31 @@ def list_versions(name: str, db: Session = Depends(get_db)):
     ]
 
 
+@router.post("/prompts/{name}/versions")
+def create_version(name: str, request: PromptVersionCreate, db: Session = Depends(get_db)):
+    """Create the next immutable version of a prompt."""
+    try:
+        version = VersioningEngine(db).create_version(
+            name=name,
+            content=request.content,
+            variables=request.variables,
+            model_config=request.llm_config,
+            commit_message=request.commit_message,
+        )
+        return {
+            "id": version.id,
+            "prompt_id": version.prompt_id,
+            "version": version.version_number,
+            "content": version.content,
+            "variables": version.variables,
+            "model_config": version.model_config,
+            "commit_message": version.commit_message,
+            "created_at": version.created_at.isoformat() if version.created_at else None,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.get("/prompts/{name}/versions/{version}")
 def get_version(name: str, version: int, db: Session = Depends(get_db)):
     """Get specific version of a prompt."""
@@ -165,7 +196,7 @@ def create_dataset(request: DatasetCreate, db: Session = Depends(get_db)):
             db,
             name=request.name,
             description=request.description,
-            items=request.items,
+            items=[item.model_dump() for item in request.items],
         )
         return {
             "id": dataset.id,
@@ -181,7 +212,11 @@ def create_dataset(request: DatasetCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/datasets")
-def list_datasets(limit: int = 50, offset: int = 0, db: Session = Depends(get_db)):
+def list_datasets(
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
     """List all datasets."""
     datasets = crud.list_datasets(db, limit=limit, offset=offset)
     return [
@@ -223,6 +258,26 @@ def get_dataset(name: str, db: Session = Depends(get_db)):
 # --- Evaluation Endpoints ---
 
 
+@router.get("/evaluations")
+def list_evaluations(
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    """List evaluation runs."""
+    return [
+        {
+            "id": evaluation.id,
+            "status": evaluation.status,
+            "model_config": evaluation.model_config,
+            "metrics": evaluation.metrics,
+            "created_at": evaluation.created_at.isoformat() if evaluation.created_at else None,
+            "completed_at": evaluation.completed_at.isoformat() if evaluation.completed_at else None,
+        }
+        for evaluation in crud.list_evaluations(db, limit=limit, offset=offset)
+    ]
+
+
 @router.post("/evaluations")
 def run_evaluation(request: EvaluationRunRequest, db: Session = Depends(get_db)):
     """Run evaluation of a prompt version against a dataset."""
@@ -235,6 +290,8 @@ def run_evaluation(request: EvaluationRunRequest, db: Session = Depends(get_db))
             model_config=request.llm_config,
         )
         evaluation = crud.get_evaluation(db, eval_id)
+        if evaluation is None:
+            raise HTTPException(status_code=500, detail="Evaluation was not persisted")
         return {
             "id": evaluation.id,
             "status": evaluation.status,

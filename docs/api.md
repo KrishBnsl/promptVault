@@ -36,6 +36,20 @@ GET /api/prompts/{name}
 GET /api/prompts/{name}/versions
 ```
 
+### Create Version
+```
+POST /api/prompts/{name}/versions
+```
+**Body:**
+```json
+{
+  "content": "updated prompt content",
+  "variables": {},
+  "model_config": {},
+  "commit_message": "Describe the change"
+}
+```
+
 ### Get Version
 ```
 GET /api/prompts/{name}/versions/{version}
@@ -79,6 +93,11 @@ GET /api/datasets/{name}
 ```
 
 ## Evaluations
+
+### List Evaluations
+```
+GET /api/evaluations
+```
 
 ### Run Evaluation
 ```

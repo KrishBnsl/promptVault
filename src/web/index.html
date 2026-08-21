@@ -16,6 +16,7 @@
         .nav button.active { background: #1a1a2e; color: white; }
         .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .card h3 { margin-bottom: 10px; }
+        .card button { margin-top: 12px; padding: 7px 12px; border: 1px solid #1a1a2e; background: white; border-radius: 5px; cursor: pointer; }
         .card pre { background: #f8f8f8; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 13px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
@@ -41,9 +42,9 @@
     </header>
     <div class="container">
         <div class="nav">
-            <button class="active" onclick="showSection('prompts')">Prompts</button>
-            <button onclick="showSection('datasets')">Datasets</button>
-            <button onclick="showSection('evaluations')">Evaluations</button>
+            <button class="active" onclick="showSection('prompts', this)">Prompts</button>
+            <button onclick="showSection('datasets', this)">Datasets</button>
+            <button onclick="showSection('evaluations', this)">Evaluations</button>
         </div>
         <div id="loading">Loading...</div>
         <div id="prompts-section" class="hidden"></div>
@@ -59,9 +60,15 @@
             return res.json();
         }
 
-        function showSection(section) {
+        function escapeHTML(value) {
+            const element = document.createElement('div');
+            element.textContent = value == null ? '' : String(value);
+            return element.innerHTML;
+        }
+
+        function showSection(section, button = null) {
             document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
+            if (button) button.classList.add('active');
             document.querySelectorAll('[id$="-section"]').forEach(s => s.classList.add('hidden'));
             document.getElementById(`${section}-section`).classList.remove('hidden');
             loadSection(section);
@@ -85,10 +92,19 @@
             if (data.length === 0) { el.innerHTML = '<div class="card"><p>No prompts found. Create one via CLI or MCP.</p></div>'; return; }
             el.innerHTML = data.map(p => `
                 <div class="card">
-                    <h3>${p.name}</h3>
-                    <p>${p.description || 'No description'}</p>
-                    <p><small>Tags: ${(p.tags || []).join(', ') || 'none'} | Created: ${p.created_at || 'N/A'}</small></p>
+                    <h3>${escapeHTML(p.name)}</h3>
+                    <p>${escapeHTML(p.description || 'No description')}</p>
+                    <p><small>Tags: ${escapeHTML((p.tags || []).join(', ') || 'none')} | Created: ${escapeHTML(p.created_at || 'N/A')}</small></p>
+                    <button onclick="loadPromptVersions('${encodeURIComponent(p.name).replace(/'/g, '%27')}', this)">View versions</button>
+                    <div class="details"></div>
                 </div>`).join('');
+        }
+
+        async function loadPromptVersions(name, button) {
+            const versions = await fetchJSON(`${API}/prompts/${name}/versions`);
+            button.parentElement.querySelector('.details').innerHTML = versions.map(version => `
+                <pre>v${version.version}\n${escapeHTML(version.content)}\n${escapeHTML(version.commit_message || '')}</pre>
+            `).join('');
         }
 
         async function loadDatasets() {
@@ -97,18 +113,31 @@
             if (data.length === 0) { el.innerHTML = '<div class="card"><p>No datasets found.</p></div>'; return; }
             el.innerHTML = data.map(d => `
                 <div class="card">
-                    <h3>${d.name}</h3>
-                    <p>${d.description || 'No description'}</p>
-                    <p><small>Items: ${d.items_count} | Created: ${d.created_at || 'N/A'}</small></p>
+                    <h3>${escapeHTML(d.name)}</h3>
+                    <p>${escapeHTML(d.description || 'No description')}</p>
+                    <p><small>Items: ${d.items_count} | Created: ${escapeHTML(d.created_at || 'N/A')}</small></p>
                 </div>`).join('');
         }
 
         async function loadEvaluations() {
+            const data = await fetchJSON(`${API}/evaluations`);
             const el = document.getElementById('evaluations-section');
-            el.innerHTML = '<div class="card"><p>Evaluations can be run via CLI or MCP server.</p></div>';
+            if (data.length === 0) { el.innerHTML = '<div class="card"><p>No evaluations found.</p></div>'; return; }
+            el.innerHTML = data.map(evaluation => `
+                <div class="card">
+                    <h3>${escapeHTML(evaluation.id)}</h3>
+                    <p>Status: <span class="badge badge-${evaluation.status === 'completed' ? 'success' : evaluation.status === 'failed' ? 'error' : 'warning'}">${escapeHTML(evaluation.status)}</span></p>
+                    <button onclick="loadEvaluationReport('${encodeURIComponent(evaluation.id)}', this)">View report</button>
+                    <div class="details"></div>
+                </div>`).join('');
         }
 
-        loadSection('prompts');
+        async function loadEvaluationReport(id, button) {
+            const report = await fetchJSON(`${API}/evaluations/${id}/report`);
+            button.parentElement.querySelector('.details').innerHTML = `<pre>${escapeHTML(JSON.stringify(report, null, 2))}</pre>`;
+        }
+
+        showSection('prompts', document.querySelector('.nav button'));
     </script>
 </body>
 </html>

@@ -29,6 +29,15 @@ Retrieve a specific version of a prompt.
 - `version` (integer, optional): Version number. If omitted, returns latest version.
 - Returns: JSON with prompt_id, name, version, content, variables, model_config, commit_message, created_at
 
+### prompt_update
+Create the next immutable version of an existing prompt.
+- `name` (string, required): Existing prompt name
+- `content` (string, required): New prompt content
+- `variables` (object, optional): Variable definitions; inherits the previous version when omitted
+- `model_config` (object, optional): LLM configuration; inherits the previous version when omitted
+- `commit_message` (string, optional): Description of the change
+- Returns: JSON with prompt_id, name, version, version_id
+
 ### prompt_list
 List all prompts.
 - `tags` (array of strings, optional): Filter by tags (AND logic)
@@ -206,6 +215,9 @@ promptctl prompt create <name> \
   --model-config '{"provider": "openai", "model": "gpt-4o-mini"}' \
   --commit-message "Initial version" \
   --tags "greeting,test"
+
+# Create the next version
+promptctl prompt update <name> --content "Updated {name}" --commit-message "Improve wording"
 
 # List prompts
 promptctl prompt list [--tags "tag1,tag2"] [--limit 50] [--offset 0] [--json]

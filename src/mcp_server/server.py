@@ -1,9 +1,11 @@
 """MCP server implementation for PromptVault."""
 
 import json
+from inspect import Parameter, signature
+from typing import Annotated, Any, cast
 
 from mcp.server.mcpserver import MCPServer
-from mcp.server.stdio import stdio_server
+from pydantic import Field
 
 from core.diffing import compute_diff
 from core.evaluation import EvaluationEngine
@@ -35,27 +37,40 @@ def create_mcp_server() -> MCPServer:
         instructions="PromptVault MCP server for prompt versioning, evaluation, and management.",
     )
 
-    @server.tool(name="prompt_create", description="Create a new prompt with initial version")
+    def aliased_tool(*, name: str, description: str):
+        """Register a tool while hiding kwargs used for Pydantic field aliases."""
+        def decorator(function):
+            parameters = [
+                parameter
+                for parameter in signature(function).parameters.values()
+                if parameter.kind is not Parameter.VAR_KEYWORD
+            ]
+            function.__signature__ = signature(function).replace(parameters=parameters)
+            return server.tool(name=name, description=description)(function)
+
+        return decorator
+
+    @aliased_tool(name="prompt_create", description="Create a new prompt with initial version")
     async def prompt_create(
         name: str,
         content: str,
         description: str = "",
         variables: dict | None = None,
+        llm_config: Annotated[dict | None, Field(alias="model_config")] = None,
         commit_message: str = "",
         tags: list[str] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Create a new prompt with initial version."""
         db = SessionLocal()
         try:
-            model_config = kwargs.get("model_config")
             engine = VersioningEngine(db)
             prompt, version = engine.create_prompt(
                 name=name,
                 content=content,
                 description=description,
                 variables=variables,
-                model_config=model_config,
+                model_config=cast(dict | None, kwargs.get("model_config", llm_config)),
                 commit_message=commit_message,
                 tags=tags,
             )
@@ -67,6 +82,36 @@ def create_mcp_server() -> MCPServer:
             }, indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
+        finally:
+            db.close()
+
+    @aliased_tool(name="prompt_update", description="Create the next immutable version of a prompt")
+    async def prompt_update(
+        name: str,
+        content: str,
+        variables: dict | None = None,
+        llm_config: Annotated[dict | None, Field(alias="model_config")] = None,
+        commit_message: str = "",
+        **kwargs: Any,
+    ) -> str:
+        """Create the next immutable version of an existing prompt."""
+        db = SessionLocal()
+        try:
+            version = VersioningEngine(db).create_version(
+                name=name,
+                content=content,
+                variables=variables,
+                model_config=cast(dict | None, kwargs.get("model_config", llm_config)),
+                commit_message=commit_message,
+            )
+            return json.dumps({
+                "prompt_id": version.prompt_id,
+                "name": name,
+                "version": version.version_number,
+                "version_id": version.id,
+            }, indent=2)
+        except Exception as exc:
+            return json.dumps({"error": str(exc)}, indent=2)
         finally:
             db.close()
 
@@ -253,11 +298,13 @@ def create_mcp_server() -> MCPServer:
         finally:
             db.close()
 
-    @server.tool(name="evaluation_run", description="Run evaluation of a prompt version against a dataset")
+    @aliased_tool(name="evaluation_run", description="Run evaluation of a prompt version against a dataset")
     async def evaluation_run(
         prompt_name: str,
         dataset_name: str,
         version: int | None = None,
+        llm_config: Annotated[dict | None, Field(alias="model_config")] = None,
+        **kwargs: Any,
     ) -> str:
         """Run evaluation of a prompt version against a dataset."""
         db = SessionLocal()
@@ -267,8 +314,10 @@ def create_mcp_server() -> MCPServer:
                 prompt_name=prompt_name,
                 dataset_name=dataset_name,
                 version=version,
+                model_config=cast(dict | None, kwargs.get("model_config", llm_config)),
             )
-            return json.dumps({"evaluation_id": eval_id, "status": "completed"}, indent=2)
+            status = engine.get_status(eval_id)
+            return json.dumps(status, indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
         finally:
@@ -316,21 +365,103 @@ def create_mcp_server() -> MCPServer:
         finally:
             db.close()
 
+    @server.resource(
+        "prompt://{name}/latest",
+        name="prompt_latest",
+        description="Latest version of a prompt",
+        mime_type="application/json",
+    )
+    async def prompt_latest_resource(name: str) -> str:
+        db = SessionLocal()
+        try:
+            version = VersioningEngine(db).get_version(name)
+            if not version:
+                return json.dumps({"error": f"Prompt '{name}' not found"})
+            return json.dumps({
+                "name": name,
+                "version": version.version_number,
+                "content": version.content,
+                "variables": version.variables,
+                "model_config": version.model_config,
+            }, indent=2)
+        finally:
+            db.close()
+
+    @server.resource(
+        "prompt://{name}/version/{version}",
+        name="prompt_version",
+        description="Specific version of a prompt",
+        mime_type="application/json",
+    )
+    async def prompt_version_resource(name: str, version: int) -> str:
+        db = SessionLocal()
+        try:
+            prompt_version = VersioningEngine(db).get_version(name, version)
+            if not prompt_version:
+                return json.dumps({"error": f"Prompt '{name}' version {version} not found"})
+            return json.dumps({
+                "name": name,
+                "version": prompt_version.version_number,
+                "content": prompt_version.content,
+                "variables": prompt_version.variables,
+                "model_config": prompt_version.model_config,
+            }, indent=2)
+        finally:
+            db.close()
+
+    @server.resource(
+        "dataset://{dataset_name}",
+        name="dataset",
+        description="Dataset with all items",
+        mime_type="application/json",
+    )
+    async def dataset_resource(dataset_name: str) -> str:
+        db = SessionLocal()
+        try:
+            dataset = crud.get_dataset(db, dataset_name)
+            if not dataset:
+                return json.dumps({"error": f"Dataset '{dataset_name}' not found"})
+            return json.dumps({
+                "name": dataset.name,
+                "description": dataset.description,
+                "items": [
+                    {
+                        "id": item.id,
+                        "input": item.input,
+                        "expected_output": item.expected_output,
+                    }
+                    for item in dataset.items
+                ],
+            }, indent=2)
+        finally:
+            db.close()
+
+    @server.resource(
+        "evaluation://{evaluation_id}/report",
+        name="evaluation_report",
+        description="Full evaluation report",
+        mime_type="application/json",
+    )
+    async def evaluation_report_resource(evaluation_id: str) -> str:
+        db = SessionLocal()
+        try:
+            report = EvaluationEngine(db).get_report(evaluation_id)
+            return json.dumps(report or {"error": "Evaluation not found"}, indent=2)
+        finally:
+            db.close()
+
     return server
 
 
-async def run_server():
+def run_server() -> None:
     """Run the MCP server over stdio."""
     init_db()
-    server = create_mcp_server()
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+    create_mcp_server().run(transport="stdio")
 
 
-def run_server_sync():
+def run_server_sync() -> None:
     """Synchronous entry point for the MCP server."""
-    import asyncio
-    asyncio.run(run_server())
+    run_server()
 
 
 if __name__ == "__main__":

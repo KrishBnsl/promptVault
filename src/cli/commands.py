@@ -6,12 +6,11 @@ from pathlib import Path
 import typer
 from sqlalchemy.orm import Session
 
-from config import settings
 from core.diffing import compute_diff
 from core.evaluation import EvaluationEngine
 from core.versioning import VersioningEngine
 from db import crud
-from db.engine import SessionLocal, init_db
+from db.engine import SessionLocal, configure_db, init_db
 
 app = typer.Typer(name="promptctl", help="PromptVault CLI - Prompt versioning and evaluation")
 prompt_app = typer.Typer(help="Prompt management commands")
@@ -38,7 +37,7 @@ def main(
 ):
     """PromptVault CLI - Prompt versioning and evaluation."""
     if db_path:
-        settings.db_path = db_path
+        configure_db(db_path)
 
 
 # --- Prompt Commands ---
@@ -126,6 +125,39 @@ def prompt_list(
                 tags_str = ", ".join(p.tags) if p.tags else ""
                 typer.echo(f"{p.name:<30} {(p.description or '')[:40]:<40} {tags_str}")
 
+    finally:
+        db.close()
+
+
+@prompt_app.command("update")
+def prompt_update(
+    name: str = typer.Argument(help="Prompt name"),
+    content: str = typer.Option(..., "--content", "-c", help="Prompt content or @file"),
+    variables: str = typer.Option(None, "--variables", help="JSON variables dict"),
+    model_config: str = typer.Option(None, "--model-config", help="JSON model config"),
+    commit_message: str = typer.Option("", "--commit-message", "-m", help="Commit message"),
+):
+    """Create the next immutable version of a prompt."""
+    db = get_db()
+    try:
+        if content.startswith("@"):
+            content = Path(content[1:]).read_text()
+        version = VersioningEngine(db).create_version(
+            name=name,
+            content=content,
+            variables=json.loads(variables) if variables else None,
+            model_config=json.loads(model_config) if model_config else None,
+            commit_message=commit_message,
+        )
+        typer.echo(json.dumps({
+            "prompt_id": version.prompt_id,
+            "name": name,
+            "version": version.version_number,
+            "version_id": version.id,
+        }, indent=2))
+    except Exception as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1)
     finally:
         db.close()
 
@@ -304,6 +336,9 @@ def dataset_create(
     except json.JSONDecodeError as e:
         typer.echo(f"Invalid JSON: {e}", err=True)
         raise typer.Exit(1)
+    except Exception as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1)
     finally:
         db.close()
 
@@ -367,7 +402,7 @@ def eval_run(
             model_config=model_config_dict,
         )
 
-        result = {"evaluation_id": eval_id, "status": "completed"}
+        result = engine.get_status(eval_id)
         typer.echo(json.dumps(result, indent=2))
 
     except Exception as e:
@@ -417,6 +452,7 @@ def serve(
     stdio: bool = typer.Option(True, "--stdio", help="Run MCP server over stdio"),
     http: bool = typer.Option(False, "--http", help="Run REST API over HTTP"),
     port: int = typer.Option(8000, "--port", "-p", help="HTTP port"),
+    host: str = typer.Option("127.0.0.1", "--host", help="HTTP bind address"),
 ):
     """Start the MCP server or REST API."""
     init_db()
@@ -426,7 +462,7 @@ def serve(
         from api.main import create_app
 
         api_app = create_app()
-        uvicorn.run(api_app, host="127.0.0.1", port=port)
+        uvicorn.run(api_app, host=host, port=port)
     else:
         from mcp_server.server import run_server
 
@@ -436,9 +472,15 @@ def serve(
 @app.command("web")
 def web(
     port: int = typer.Option(8080, "--port", "-p", help="Web UI port"),
+    host: str = typer.Option("127.0.0.1", "--host", help="HTTP bind address"),
 ):
-    """Start the optional web UI."""
-    typer.echo(f"Web UI would start on port {port} (not yet implemented)")
+    """Start the read-only web UI and REST API."""
+    import uvicorn
+
+    from api.main import create_app
+
+    init_db()
+    uvicorn.run(create_app(), host=host, port=port)
 
 
 if __name__ == "__main__":

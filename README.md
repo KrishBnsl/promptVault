@@ -85,6 +85,7 @@ Add to your Claude Desktop config:
 
 ```bash
 promptctl prompt create <name> --content <text> [options]
+promptctl prompt update <name> --content <text> [options]
 promptctl prompt list [--tags TAGS] [--limit N]
 promptctl prompt show <name> [--version N]
 promptctl prompt versions <name>
@@ -106,6 +107,7 @@ promptctl web [--port 8080]
 | Tool | Description |
 |------|-------------|
 | `prompt_create` | Create a new prompt with initial version |
+| `prompt_update` | Create the next immutable prompt version |
 | `prompt_get` | Retrieve a prompt version |
 | `prompt_list` | List all prompts |
 | `prompt_versions` | List all versions of a prompt |

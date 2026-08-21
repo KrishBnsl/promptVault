@@ -20,6 +20,13 @@ promptctl prompt create summarize --content "Summarize {article} in {tone}" --va
 promptctl prompt create summarize --content @prompt.txt
 ```
 
+### promptctl prompt update
+Create the next immutable version of an existing prompt.
+
+```bash
+promptctl prompt update <name> --content <text-or-file> [--variables JSON] [--model-config JSON] [--commit-message TEXT]
+```
+
 ### promptctl prompt list
 List all prompts.
 
@@ -97,12 +104,12 @@ promptctl eval report <evaluation-id> [--format json|table]
 Start the MCP server or REST API.
 
 ```bash
-promptctl serve [--stdio|--http] [--port 8000]
+promptctl serve [--stdio|--http] [--host 127.0.0.1] [--port 8000]
 ```
 
 ### promptctl web
 Start the optional web UI.
 
 ```bash
-promptctl web [--port 8080]
+promptctl web [--host 127.0.0.1] [--port 8080]
 ```

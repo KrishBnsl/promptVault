@@ -134,7 +134,7 @@ promptvault/
 │   │   ├── engine.py      # SQLAlchemy setup
 │   │   └── models.py      # ORM models
 │   ├── mcp_server/
-│   │   └── server.py      # MCP server (13 tools)
+│   │   └── server.py      # MCP server (14 tools)
 │   └── web/
 │       └── index.html     # Optional web UI
 ├── tests/                  # 28 tests

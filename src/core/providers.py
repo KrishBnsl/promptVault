@@ -87,8 +87,11 @@ class AnthropicProvider(LLMProvider):
 
         latency_ms = int((time.time() - start_time) * 1000)
 
+        content = "".join(
+            text for block in response.content if (text := getattr(block, "text", ""))
+        )
         return {
-            "content": response.content[0].text if response.content else "",
+            "content": content,
             "token_usage": {
                 "prompt_tokens": response.usage.input_tokens,
                 "completion_tokens": response.usage.output_tokens,
@@ -182,7 +185,7 @@ class GeminiProvider(LLMProvider):
 
 def get_provider(provider_name: str) -> LLMProvider:
     """Get an LLM provider by name."""
-    providers = {
+    providers: dict[str, type[LLMProvider]] = {
         "openai": OpenAIProvider,
         "anthropic": AnthropicProvider,
         "ollama": OllamaProvider,

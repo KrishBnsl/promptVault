@@ -8,17 +8,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files
-COPY pyproject.toml README.md ./
+COPY pyproject.toml uv.lock README.md ./
 
 # Install uv for fast dependency resolution
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
+# Copy source before installing the project itself
+COPY src/ ./src/
+
 # Install dependencies
 ENV UV_PROJECT_ENVIRONMENT="/app/.venv"
-RUN uv sync --no-dev
+RUN uv sync --no-dev --frozen
 
-# Copy source code
-COPY src/ ./src/
 COPY .env.example .env.example
 
 # Expose ports

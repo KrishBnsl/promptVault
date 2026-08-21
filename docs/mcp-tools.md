@@ -29,6 +29,20 @@ Retrieve a specific version of a prompt.
 }
 ```
 
+### prompt_update
+Create the next immutable version of an existing prompt.
+
+**Input:**
+```json
+{
+  "name": "string (required)",
+  "content": "string (required)",
+  "variables": {} (optional),
+  "model_config": {} (optional),
+  "commit_message": "string (optional)"
+}
+```
+
 ### prompt_list
 List all prompts.
 

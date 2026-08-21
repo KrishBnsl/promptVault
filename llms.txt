@@ -16,7 +16,7 @@ promptctl serve        # starts MCP server over stdio
 
 ## Interfaces
 
-- **MCP Server** (primary): 13 tools, 4 resources, stdio transport
+- **MCP Server** (primary): 14 tools, 4 resources, stdio transport
 - **CLI** (`promptctl`): 12 commands for prompts, datasets, evaluations
 - **REST API**: 12 endpoints at `http://localhost:8000/api`
 
@@ -25,6 +25,7 @@ promptctl serve        # starts MCP server over stdio
 | Tool | Description |
 |------|-------------|
 | `prompt_create` | Create prompt with initial version. Params: name (required), content (required), description, variables (dict), model_config (dict), commit_message, tags (list) |
+| `prompt_update` | Create the next immutable version. Params: name, content (required), variables, model_config, commit_message |
 | `prompt_get` | Get prompt version. Params: name (required), version (optional, defaults to latest) |
 | `prompt_list` | List prompts. Params: tags (list), limit (int, default 50), offset (int) |
 | `prompt_versions` | List all versions. Params: name (required) |
@@ -59,6 +60,7 @@ promptctl serve        # starts MCP server over stdio
 
 ```bash
 promptctl prompt create <name> --content <text> [--description] [--variables JSON] [--model-config JSON] [--commit-message] [--tags]
+promptctl prompt update <name> --content <text> [--variables JSON] [--model-config JSON] [--commit-message]
 promptctl prompt list [--tags] [--limit] [--offset] [--json]
 promptctl prompt show <name> [--version N] [--json]
 promptctl prompt versions <name> [--json]
