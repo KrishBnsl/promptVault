@@ -151,6 +151,7 @@
   background: var(--ledger-yellow);
   border: 1px solid var(--ledger-ink);
   box-shadow: 5px 5px 0 rgb(23 33 27 / 18%);
+  color: var(--ledger-ink);
   font-family: var(--ifm-font-family-monospace);
   font-size: 0.62rem;
   font-weight: 600;
@@ -294,6 +295,7 @@
 .proofRail {
   background: var(--ledger-yellow);
   border-bottom: 2px solid var(--ledger-ink);
+  color: var(--ledger-ink);
 }
 
 .proofInner {
