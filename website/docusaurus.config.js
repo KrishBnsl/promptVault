@@ -48,6 +48,10 @@ const config = {
       },
       navbar: {
         title: 'PromptVault',
+        logo: {
+          alt: 'PromptVault logo',
+          src: 'img/logo.svg',
+        },
         items: [
           {
             type: 'docSidebar',
@@ -64,6 +68,7 @@ const config = {
             href: 'https://github.com/KrishBnsl/promptVault',
             label: 'GitHub',
             position: 'right',
+            className: 'navbar-github-link',
           },
         ],
       },

@@ -103,5 +103,5 @@ curl http://localhost:8000/api/prompts
 
 - [Installation](/docs/installation) — Get started in 2 minutes
 - [API Reference](/docs/api-reference) — All 12 REST endpoints
-- [MCP Tools](/docs/mcp-tools) — All 13 MCP tools
+- [MCP Tools](/docs/mcp-tools) — All 14 MCP tools
 - [Evaluation](/docs/evaluation) — How evals work + pricing
